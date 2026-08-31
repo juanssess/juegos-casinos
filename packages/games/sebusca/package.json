@@ -1,0 +1,16 @@
+{
+  "name": "@casino/game-sebusca",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./engine": "./src/engine.ts",
+    "./measure": "./src/measure.ts",
+    "./tuning": "./src/tuning.ts",
+    "./theme": "./src/theme.ts"
+  },
+  "dependencies": {
+    "@casino/math": "*"
+  }
+}

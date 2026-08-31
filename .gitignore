@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+out/
+*.log
+
+# Capturas de QA del cliente (se regeneran solas)
+apps/client/.shots/

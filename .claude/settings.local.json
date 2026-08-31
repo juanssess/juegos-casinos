@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -i 's/\\\\bbusy = true;/busyState.value = true;/g; s/\\\\bbusy = false;/busyState.value = false;/g' main.ts)",
+      "Bash(sed -i 's/\\\\bif \\(busy\\)/if \\(busyState.value\\)/g; s/\\\\bif \\(!busy\\)/if \\(!busyState.value\\)/g; s/\\\\bwhile \\(autoLeft > 0 \\\\&\\\\& !busy\\)/while \\(autoLeft > 0 \\\\&\\\\& !busyState.value\\)/; s/\\\\breturn busy;/return busyState.value;/; s/if \\(busy \\\\&\\\\& autoLeft === 0\\)/if \\(busyState.value \\\\&\\\\& autoLeft === 0\\)/; s/if \\(busy || buyModal.visible\\)/if \\(busyState.value || buyModal.visible\\)/; s/if \\(autoLeft > 0 \\\\&\\\\& !busy\\)/if \\(autoLeft > 0 \\\\&\\\\& !busyState.value\\)/' main.ts)",
+      "Bash(sed -i '18i <link rel=\"stylesheet\" href=\"src/styles/games/proveedor.css\">' index.html)",
+      "Bash(sed -i 's|<script src=\"src/games/plantilla.js\"></script>|<script src=\"src/games/plantilla.js\"></script>\\\\n<script src=\"src/games/proveedor.js\"></script>|' index.html)",
+      "Bash(sed -i 's|    MCSportsbook, MCPlantilla|    MCSportsbook, MCPlantilla, MCProveedor|' src/main.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8123/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8123/games/slots/index.html)"
+    ]
+  }
+}

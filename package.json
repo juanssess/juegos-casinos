@@ -1,0 +1,29 @@
+{
+  "name": "casino-games",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/math",
+    "packages/protocol",
+    "packages/games/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "sim": "node tools/sim.ts",
+    "tune": "node tools/tune.ts",
+    "test": "node --test \"packages/math/test/*.test.ts\"",
+    "buyprice": "node tools/buyprice.ts",
+    "dev": "npm run dev -w @casino/client",
+    "build": "npm run build -w @casino/client",
+    "build:casino": "node tools/build-casino.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=22.6.0"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "maverick",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "-w", "@casino/client"],
+      "port": 5173
+    }
+  ]
+}
