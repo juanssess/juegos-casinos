@@ -9,6 +9,7 @@
  */
 
 import { Container, Graphics, Rectangle, Text, type Application, type Texture } from 'pixi.js';
+import { U, contactShadow, medallion, vgrad, metal, makeLighting } from './material.ts';
 import { SYM, type SymbolId } from '@casino/math';
 import { SKIN } from '@casino/game-sebusca/theme';
 
@@ -201,33 +202,119 @@ function drawDynamite(c: Container, color: number, accent: number): void {
 }
 
 /** Bajos: naipes de saloon, planos y gastados. */
+/**
+ * Una carta de saloon, gastada.
+ *
+ * Antes era un rectangulo translucido con una letra encima: se leia como
+ * "letra sobre fondo", no como carta. Una carta necesita tres cosas que
+ * antes no estaban: papel claro —no oscuro—, un borde interior a un par de
+ * milimetros del canto, y el palo en su color de siempre.
+ *
+ * Que el papel sea CLARO es lo que mas cambia. Cinco rectangulos oscuros en
+ * una grilla oscura se leen como agujeros; cinco cartas claras se leen como
+ * cartas, y ademas le dan a la grilla el respiro que necesita entre los
+ * simbolos altos, que son todos oscuros y metalicos.
+ */
 function drawCard(c: Container, color: number, accent: number, glyph: string): void {
+  const w = 54, h = 72;
   const g = new Graphics();
-  g.roundRect(-26, -34, 52, 68, 5).fill({ color: accent, alpha: 0.3 });
-  g.roundRect(-26, -34, 52, 68, 5).stroke({ width: 2, color: accent, alpha: 0.85 });
-  // Doblez de la esquina: los naipes del saloon están gastados.
-  g.poly([16, -34, 26, -34, 26, -24]).fill({ color, alpha: 0.22 });
+
+  // Sombra propia: la carta esta apoyada, no pegada.
+  g.roundRect(-w / 2 + 1.5, -h / 2 + 3, w, h, 6).fill({ color: 0x000000, alpha: 0.45 });
+
+  // El papel: marfil arriba, mas tostado abajo. El desgaste va en el tono,
+  // no en manchas: una mancha dibujada se repite identica en las 30 cartas
+  // que hay en pantalla y se nota enseguida que es la misma textura.
+  g.roundRect(-w / 2, -h / 2, w, h, 6).fill(vgrad([
+    [0, 0xf4ead2],
+    [0.55, 0xdfd0ac],
+    [1, 0xbfa87f],
+  ]));
+
+  // Canto oscuro y borde interior: es lo que la vuelve carta y no rectangulo.
+  g.roundRect(-w / 2, -h / 2, w, h, 6).stroke({ width: 1.4, color: 0x6b5734, alpha: 0.8 });
+  g.roundRect(-w / 2 + 4, -h / 2 + 4, w - 8, h - 8, 4)
+    .stroke({ width: 1, color: accent, alpha: 0.45 });
+
+  // La esquina gastada, ahora doblada de verdad: el triangulo de atras
+  // oscuro y el del frente claro.
+  g.poly([w / 2 - 12, -h / 2, w / 2, -h / 2, w / 2, -h / 2 + 12])
+    .fill({ color: 0x8a7550, alpha: 0.55 });
+  g.poly([w / 2 - 12, -h / 2, w / 2, -h / 2 + 12, w / 2 - 11, -h / 2 + 11])
+    .fill({ color: 0xfff6e2, alpha: 0.5 });
+
   c.addChild(g);
+
+  // El palo, en su color de siempre. Alternar rojo y negro por valor le da
+  // al ojo una segunda pista de jerarquia sin agregar nada nuevo a la pantalla.
+  const rojo = glyph === 'K' || glyph === 'J';
+  const tinta = rojo ? 0xa8202c : 0x1b1710;
 
   const t = new Text({
     text: glyph,
     style: {
       fontFamily: 'Georgia, "Times New Roman", serif',
-      fontSize: glyph.length > 1 ? 36 : 46,
+      fontSize: glyph.length > 1 ? 34 : 44,
       fontWeight: '700',
-      fill: color,
-      stroke: { color: 0x14100a, width: 4, join: 'round' },
+      fill: tinta,
     },
   });
   t.anchor.set(0.5);
+  t.position.set(0, -2);
   c.addChild(t);
+
+  // Y el indice chico abajo, como en una carta de verdad.
+  const chico = new Text({
+    text: glyph,
+    style: {
+      fontFamily: 'Georgia, "Times New Roman", serif',
+      fontSize: 13,
+      fontWeight: '700',
+      fill: tinta,
+    },
+  });
+  chico.anchor.set(0.5);
+  chico.position.set(-w / 2 + 9, h / 2 - 10);
+  chico.alpha = 0.75;
+  c.addChild(chico);
+}
+
+/**
+ * SOPORTE POR JERARQUIA — la version del oeste.
+ *
+ * Misma receta que Maverick, distinto material: aca el metal es hierro
+ * viejo y laton, no oro de templo. Copiarle la piedra azteca al saloon
+ * habria sido aplicar el oficio sin mirar el tema, que es exactamente
+ * como se nota que dos juegos salieron de la misma plantilla.
+ *
+ * Y los naipes no llevan placa: llevan CARTA. Es lo que corresponde a un
+ * juego de saloon, y ademas es mas fuerte que una piedra con una letra.
+ */
+function backing(g: Graphics, id: SymbolId): void {
+  contactShadow(g);
+
+  if (id === SYM.WILD) {
+    medallion(g, { ring: [0x6a2a14, 0xb8552a, 0xffb877], well: [0x2c1408, 0x140803] });
+    return;
+  }
+  if (id === SYM.SCATTER) {
+    medallion(g, { ring: [0x14403f, 0x2a8481, 0x8ee8e4], well: [0x0a2422, 0x04100f] });
+    return;
+  }
+  if (id === SYM.L1 || id === SYM.L2 || id === SYM.L3 || id === SYM.L4 || id === SYM.L5) {
+    return;   // la carta se dibuja entera en drawCard
+  }
+  // Altos: hierro viejo con laton.
+  medallion(g, { ring: [0x3a2c1e, 0x6e5638, 0xb99a63], well: [0x241a10, 0x0f0906] });
 }
 
 function buildSymbol(id: SymbolId): Container {
   const skin = SKIN[id]!;
   const c = new Container();
+
+  // 1. El soporte.
   const bg = new Graphics();
-  shadow(bg);
+  backing(bg, id);
   c.addChild(bg);
 
   switch (skin.shape) {
@@ -239,6 +326,13 @@ function buildSymbol(id: SymbolId): Container {
     case 'dynamite': drawDynamite(c, skin.color, skin.accent); break;
     case 'card': drawCard(c, skin.color, skin.accent, skin.glyph ?? '?'); break;
   }
+
+  // 2. La luz, igual que en Maverick: es lo que hace que los dos juegos
+  //    se lean como salidos de la misma casa.
+  const { glow, vignette } = makeLighting();
+  c.addChild(glow);
+  c.addChild(vignette);
+
   return c;
 }
 

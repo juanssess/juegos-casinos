@@ -11,7 +11,7 @@
  * `rgs`. Nada más en todo el cliente sabe de dónde salen las rondas.
  */
 
-import { Application, Container, Graphics, Sprite, Text } from 'pixi.js';
+import { Application, Container, FillGradient, Graphics, Sprite, Text } from 'pixi.js';
 import { CryptoRng, SYMBOL_NAMES, PAYING_SYMBOLS } from '@casino/math';
 import type { ClimbDto, RgsClient, SpinStep } from '@casino/protocol';
 import { RgsError, RGS_ERRORS } from '@casino/protocol';
@@ -20,6 +20,7 @@ import { pickClientGame } from './games.ts';
 import { LocalRgs, roundToSteps } from './rgs/local.ts';
 import { BridgeRgs, isEmbedded } from './rgs/bridge.ts';
 import { setActiveTheme, PALETTE, TIMING } from './render/theme.ts';
+import { metal, vgrad, rgrad } from './render/material.ts';
 import { ReelSet } from './render/reels.ts';
 import { WinPresenter } from './render/winlines.ts';
 import { Hud } from './render/hud.ts';
@@ -175,25 +176,67 @@ async function main(): Promise<void> {
     return (r << 16) | (g << 8) | b;
   }
 
-  /** Marco doble; en la feature vira al color del scatter del juego. */
+  /**
+   * EL MUEBLE.
+   *
+   * Antes esto eran cuatro rectangulos redondeados con trazos de colores
+   * planos. De lejos se leia como un recuadro dibujado encima del fondo, no
+   * como un mueble con los rodillos adentro.
+   *
+   * Lo que hace que un marco parezca metal es lo mismo que en los simbolos:
+   * un degradado con la banda clara ESTRECHA —el reflejo del horizonte— y
+   * oscuro arriba y abajo. Y lo que hace que los rodillos parezcan HUNDIDOS
+   * es el labio oscuro por dentro del bisel: sin esa sombra, la grilla flota
+   * a la misma altura que el marco y el mueble no existe.
+   *
+   * En la feature vira al color del scatter, que era el comportamiento de
+   * antes y sigue siendo la senial mas clara de que cambio el estado.
+   */
   function drawFrame(free: boolean): void {
     const glow = free ? PALETTE.scatter : PALETTE.frameLight;
+    const oscuro = free ? darken(PALETTE.scatter) : PALETTE.frame;
+    const claro = free ? PALETTE.scatter : PALETTE.frameLight;
+
+    frame.clear();
+
+    // Sombra proyectada: apoya el mueble sobre el fondo.
     frame
-      .clear()
-      .roundRect(-22, -22, boardW + 44, boardH + 44, 20)
-      .fill({ color: 0x000000, alpha: 0.4 })
-      .roundRect(-17, -17, boardW + 34, boardH + 34, 16)
-      .stroke({ width: 6, color: free ? darken(PALETTE.scatter) : PALETTE.frame, alpha: 0.95 })
-      .roundRect(-14, -14, boardW + 28, boardH + 28, 14)
-      .stroke({ width: 2.5, color: glow, alpha: 0.95 })
-      .roundRect(-8, -8, boardW + 16, boardH + 16, 10)
-      .stroke({ width: 1.2, color: glow, alpha: 0.3 });
-    // Remaches dorados en las esquinas: detalle barato que "viste" el marco.
+      .roundRect(-26, -22, boardW + 52, boardH + 54, 24)
+      .fill({ color: 0x000000, alpha: 0.45 });
+
+    // El bisel, con metal de verdad.
+    frame
+      .roundRect(-20, -20, boardW + 40, boardH + 40, 18)
+      .fill(metal(darken(oscuro), oscuro, claro));
+
+    // Filo exterior oscuro: separa el mueble del fondo.
+    frame
+      .roundRect(-20, -20, boardW + 40, boardH + 40, 18)
+      .stroke({ width: 2, color: 0x0d0904, alpha: 0.9 });
+
+    // Hilo claro sobre el canto superior: la luz pega arriba.
+    frame
+      .moveTo(-4, -18.5)
+      .lineTo(boardW + 4, -18.5)
+      .stroke({ width: 2, color: 0xffffff, alpha: 0.22 });
+
+    // El labio interno: la sombra que hunde los rodillos.
+    frame
+      .roundRect(-9, -9, boardW + 18, boardH + 18, 11)
+      .stroke({ width: 7, color: 0x000000, alpha: 0.55 });
+
+    // Y el filo brillante que remata el hueco.
+    frame
+      .roundRect(-6, -6, boardW + 12, boardH + 12, 9)
+      .stroke({ width: 1.6, color: glow, alpha: 0.75 });
+
+    // Remaches en las esquinas, ahora con volumen.
     for (const [cx, cy] of [
-      [-14, -14], [boardW + 14, -14], [-14, boardH + 14], [boardW + 14, boardH + 14],
+      [-13, -13], [boardW + 13, -13], [-13, boardH + 13], [boardW + 13, boardH + 13],
     ] as const) {
-      frame.circle(cx, cy, 5).fill(glow);
-      frame.circle(cx, cy, 2.2).fill(0x2a1a08);
+      frame.circle(cx, cy, 6.5).fill({ color: 0x000000, alpha: 0.5 });
+      frame.circle(cx, cy, 5.4).fill(metal(darken(oscuro), claro, 0xffffff));
+      frame.circle(cx - 1.3, cy - 1.3, 1.5).fill({ color: 0xffffff, alpha: 0.55 });
     }
   }
 
@@ -247,6 +290,29 @@ async function main(): Promise<void> {
     // que dos juegos en el mismo cliente no se sientan el mismo juego.
     bg.clear().rect(0, 0, w, h).fill(PALETTE.bgBottom);
     profile.backdrop(bg, w, h);
+
+    /* Vinieta sobre el fondo del juego.
+       Un fondo parejo de punta a punta compite con los rodillos por la
+       atencion. Oscurecer las esquinas empuja el ojo al centro sin que se
+       note que algo lo empujo: es el truco mas viejo de la iluminacion y
+       funciona igual en una mesa de casino que en una foto. */
+    bg.rect(0, 0, w, h).fill(
+      new FillGradient({
+        type: 'radial',
+        center: { x: 0.5, y: 0.44 },
+        innerRadius: 0,
+        outerCenter: { x: 0.5, y: 0.44 },
+        outerRadius: 0.72,
+        colorStops: [
+          // Calibrado mirando el fondo, no eligiendo un numero: a 0,62 la
+          // vinieta se comia el marron azteca y el juego quedaba negro.
+          { offset: 0.38, color: 'rgba(0,0,0,0)' },
+          { offset: 0.8, color: 'rgba(0,0,0,0.2)' },
+          { offset: 1, color: 'rgba(0,0,0,0.42)' },
+        ],
+        textureSpace: 'local',
+      }),
+    );
 
     drawFrame(freeMode);
 

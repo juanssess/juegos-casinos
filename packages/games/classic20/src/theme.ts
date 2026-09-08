@@ -95,11 +95,21 @@ export const SKIN: Record<SymbolId, SymbolSkin> = {
     accent: 0x3b2d55,
     plate: 0x1d1729,
   },
-  [SYM.L1]: { id: SYM.L1, label: 'As', shape: 'glyph', glyph: 'A', color: 0xd9c9a3, accent: 0x8a7550, plate: 0x241d14 },
-  [SYM.L2]: { id: SYM.L2, label: 'Rey', shape: 'glyph', glyph: 'K', color: 0xcdbfa0, accent: 0x7d6a48, plate: 0x241d14 },
-  [SYM.L3]: { id: SYM.L3, label: 'Reina', shape: 'glyph', glyph: 'Q', color: 0xc2b69c, accent: 0x736247, plate: 0x241d14 },
-  [SYM.L4]: { id: SYM.L4, label: 'Jota', shape: 'glyph', glyph: 'J', color: 0xb7ac97, accent: 0x695a44, plate: 0x241d14 },
-  [SYM.L5]: { id: SYM.L5, label: 'Diez', shape: 'glyph', glyph: '10', color: 0xaca292, accent: 0x5f5340, plate: 0x241d14 },
+  /* LOS NAIPES TIENEN MATERIAL.
+     Antes eran todos el mismo crema, apenas mas apagado a medida que bajaba
+     el valor. Se leia como cinco letras iguales en gris, y son casi dos
+     tercios de lo que aparece en pantalla: si esos se ven baratos, el juego
+     entero se ve barato por bien que esten los altos.
+
+     Ahora cada uno es un material distinto —oro, plata, cobre, jade, acero—
+     que ademas ordena el valor sin que haya que leer la tabla de pagos. La
+     jerarquia se mantiene: el oro del As esta un escalon por debajo del oro
+     del wild, no compitiendo con el. */
+  [SYM.L1]: { id: SYM.L1, label: 'As', shape: 'glyph', glyph: 'A', color: 0xf2c766, accent: 0x8a6a24, plate: 0x241d14 },
+  [SYM.L2]: { id: SYM.L2, label: 'Rey', shape: 'glyph', glyph: 'K', color: 0xd8dfe8, accent: 0x6d7683, plate: 0x241d14 },
+  [SYM.L3]: { id: SYM.L3, label: 'Reina', shape: 'glyph', glyph: 'Q', color: 0xe09a64, accent: 0x8a5228, plate: 0x241d14 },
+  [SYM.L4]: { id: SYM.L4, label: 'Jota', shape: 'glyph', glyph: 'J', color: 0x7fd8b0, accent: 0x2f7a5c, plate: 0x241d14 },
+  [SYM.L5]: { id: SYM.L5, label: 'Diez', shape: 'glyph', glyph: '10', color: 0x8fb4d9, accent: 0x3d5f80, plate: 0x241d14 },
 };
 
 /**

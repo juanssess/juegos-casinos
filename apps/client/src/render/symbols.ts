@@ -14,21 +14,38 @@
 import { Container, Graphics, Rectangle, Text, type Application, type Texture } from 'pixi.js';
 import { SYM, type SymbolId } from '@casino/math';
 import { SKIN } from '@casino/game-classic20/theme';
-
-/** Todos los símbolos se dibujan en un cuadrado de 100×100 centrado en 0,0. */
-const U = 50;
+import { U, contactShadow, medallion, plaque, makeLighting, lit, metal } from './material.ts';
 
 /**
- * Sombra suave bajo la figura.
+ * SOPORTE POR JERARQUÍA
  *
- * Antes cada símbolo traía su propia placa de color de fondo, y en la grilla
- * eso producía un damero: se veía el recuadro de cada ficha en vez de la
- * figura. Con el fondo del rodillo uniforme y solo una sombra debajo, los
- * altos "flotan" y los bajos (que son naipes y sí llevan marco) se leen como
- * un plano distinto. Es la jerarquía que uno quiere.
+ * Los altos apoyan en un medallón de metal; los naipes, en una placa de
+ * piedra. No es adorno: es lo que hace que el ojo separe "esto paga mucho"
+ * de "esto es relleno" antes de leer nada. Antes los once salían al mismo
+ * plano y la grilla se leía toda igual.
+ *
+ * El wild y el scatter llevan el aro más brillante del juego, porque son
+ * los dos que hay que encontrar de un vistazo mientras los rodillos giran.
  */
-function shadow(g: Graphics): void {
-  g.ellipse(0, 6, U * 0.72, U * 0.66).fill({ color: 0x000000, alpha: 0.28 });
+function backing(g: Graphics, id: SymbolId): void {
+  contactShadow(g);
+
+  if (id === SYM.WILD) {
+    medallion(g, { ring: [0x7a4410, 0xd08a24, 0xffe6a0], well: [0x2a1608, 0x120903] });
+    return;
+  }
+  if (id === SYM.SCATTER) {
+    medallion(g, { ring: [0x0f4a44, 0x1f8f80, 0x8ff0e0], well: [0x082420, 0x03100e] });
+    return;
+  }
+  if (id === SYM.L1 || id === SYM.L2 || id === SYM.L3 || id === SYM.L4 || id === SYM.L5) {
+    // El filo toma el acento del propio naipe, asi la placa pertenece a la
+    // letra en vez de ser un rectangulo generico debajo de cinco letras.
+    plaque(g, { edge: SKIN[id]!.accent });
+    return;
+  }
+  // Altos: medallón de bronce, un punto por debajo del wild.
+  medallion(g, { ring: [0x5c3f18, 0x94702a, 0xdcb96c], well: [0x1a120a, 0x0b0805] });
 }
 
 /**
@@ -244,37 +261,74 @@ function drawTemple(c: Container, color: number, accent: number): void {
 }
 
 /** Bajos: naipe tallado en piedra. Planos a propósito, no compiten con los altos. */
+/**
+ * Los naipes, tallados.
+ *
+ * Antes eran una letra plana con un contorno. Una letra tallada en piedra
+ * necesita TRES pasadas y no una: la sombra hundida abajo, el cuerpo con
+ * degradado, y el filo claro arriba. Con una sola pasada el ojo ve tipografía;
+ * con tres ve un objeto con espesor.
+ *
+ * Los naipes son casi dos tercios de lo que aparece en pantalla, así que si
+ * se leen baratos, el juego entero se lee barato por bien que estén los altos.
+ */
 function drawGlyph(c: Container, color: number, accent: number, glyph: string): void {
-  const g = new Graphics();
-  g.roundRect(-27, -34, 54, 68, 7).fill({ color: accent, alpha: 0.35 });
-  g.roundRect(-27, -34, 54, 68, 7).stroke({ width: 2.5, color: accent, alpha: 0.9 });
-  // Esquinas talladas: da textura de piedra sin robar atención.
-  for (const [x, y] of [[-20, -27], [20, -27], [-20, 27], [20, 27]] as const) {
-    g.circle(x, y, 2.2).fill({ color, alpha: 0.35 });
-  }
-  c.addChild(g);
+  const size = glyph.length > 1 ? 42 : 56;
+  const base = {
+    fontFamily: 'Georgia, "Times New Roman", serif',
+    fontSize: size,
+    fontWeight: '700' as const,
+  };
 
-  const t = new Text({
+  // 1. Hundido: la letra cae dentro de la piedra.
+  const bajo = new Text({ text: glyph, style: { ...base, fill: 0x000000 } });
+  bajo.anchor.set(0.5);
+  bajo.position.set(0, 2.4);
+  bajo.alpha = 0.55;
+  c.addChild(bajo);
+
+  // 2. Filo iluminado, un pelo arriba. Sobre piedra clara pesa menos que
+  //    sobre oscura: si no, la letra se lava.
+  const alto = new Text({ text: glyph, style: { ...base, fill: 0xffffff } });
+  alto.anchor.set(0.5);
+  alto.position.set(-0.6, -1.8);
+  alto.alpha = 0.18;
+  c.addChild(alto);
+
+  // 3. El cuerpo, con el metal de la casa.
+  const cuerpo = new Text({
     text: glyph,
     style: {
-      fontFamily: 'Georgia, "Times New Roman", serif',
-      fontSize: glyph.length > 1 ? 40 : 52,
-      fontWeight: '700',
-      fill: color,
-      stroke: { color: 0x120d07, width: 5, join: 'round' },
+      ...base,
+      fill: metal(mix(color, 0x000000, 0.45), color, mix(color, 0xffffff, 0.6)),
+      stroke: { color: 0x160f08, width: 3.5, join: 'round' },
     },
   });
-  t.anchor.set(0.5);
-  c.addChild(t);
+  cuerpo.anchor.set(0.5);
+  c.addChild(cuerpo);
+}
+
+/** Mezcla dos colores. Sirve para derivar el metal del color del naipe. */
+function mix(a: number, b: number, t: number): number {
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+  return (
+    (Math.round(ar + (br - ar) * t) << 16) |
+    (Math.round(ag + (bg - ag) * t) << 8) |
+    Math.round(ab + (bb - ab) * t)
+  );
 }
 
 function buildSymbol(id: SymbolId): Container {
   const skin = SKIN[id]!;
   const c = new Container();
+
+  // 1. El soporte donde apoya la figura.
   const bg = new Graphics();
-  shadow(bg);
+  backing(bg, id);
   c.addChild(bg);
 
+  // 2. La figura.
   switch (skin.shape) {
     case 'serpent': drawSerpent(c, skin.color, skin.accent); break;
     case 'jaguar': drawJaguar(c, skin.color, skin.accent); break;
@@ -284,6 +338,13 @@ function buildSymbol(id: SymbolId): Container {
     case 'temple': drawTemple(c, skin.color, skin.accent); break;
     case 'glyph': drawGlyph(c, skin.color, skin.accent, skin.glyph ?? '?'); break;
   }
+
+  // 3. La luz. Va al final y es idéntica en los once: es lo que hace que
+  //    la grilla parezca un solo objeto iluminado y no once dibujos juntos.
+  const { glow, vignette } = makeLighting();
+  c.addChild(glow);
+  c.addChild(vignette);
+
   return c;
 }
 
