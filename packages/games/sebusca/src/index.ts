@@ -26,6 +26,7 @@ import {
   type SlotGameDef,
   type SymbolCounts,
 } from '@casino/math';
+import { ANTE_SCATTERS, ANTE_COST_X, BONUS_VARIANTS } from './tuning.ts';
 import { PAYLINES } from './paylines.ts';
 
 const REELS = 5;
@@ -105,6 +106,19 @@ const FREE_COUNTS: readonly SymbolCounts[] = [
   { [SYM.H1]: 4, [SYM.H2]: 5, [SYM.H3]: 6, [SYM.H4]: 6, [SYM.L1]: 9, [SYM.L2]: 9, [SYM.L3]: 9, [SYM.L4]: 9, [SYM.L5]: 9, [SYM.SCATTER]: 1 },
 ];
 
+/**
+ * TIRAS DE APUESTA ANTE.
+ *
+ * Se Busca arranca con UN scatter por tira —es el juego de volatilidad muy
+ * alta, la feature tiene que costar de encontrar— asi que subir a dos es un
+ * salto grande. Como en Maverick, el conteo no se elige: se ajusta midiendo
+ * hasta que el RTP con ante coincide con el del base.
+ */
+const ANTE_COUNTS: readonly SymbolCounts[] = BASE_COUNTS.map((r, i) => ({
+  ...r,
+  [SYM.SCATTER]: ANTE_SCATTERS[i]!,
+}));
+
 const STRIP_SEED = 0x5eb0_5ca;
 
 export const GAME: SebuscaDef = {
@@ -115,6 +129,9 @@ export const GAME: SebuscaDef = {
   paytable: PAYTABLE,
   scatterPaytable: SCATTER_PAYTABLE,
   baseStrips: buildStrips(BASE_COUNTS, new Sfc32Rng(STRIP_SEED)),
+  anteStrips: buildStrips(ANTE_COUNTS, new Sfc32Rng(STRIP_SEED ^ 0xa17e)),
+  anteCostX: ANTE_COST_X,
+  bonusVariants: BONUS_VARIANTS,
   freeStrips: buildStrips(FREE_COUNTS, new Sfc32Rng(STRIP_SEED ^ 0xdead)),
   scattersToTrigger: 3,
   freeSpinsAwarded: 8,

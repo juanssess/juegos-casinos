@@ -27,6 +27,7 @@
 import {
   SYM,
   createEvaluator,
+  type BonusVariant,
   type FastRound,
   type Grid,
   type Rng,
@@ -65,10 +66,10 @@ export function createSebuscaEngine(game: SebuscaDef): RoundEngine {
   const fastMults = new Float64Array(cells);
   const fastSticky = new Float64Array(cells);
 
-  function play(rng: Rng, bet: number): RoundResult {
+  function play(rng: Rng, bet: number, ante = false): RoundResult {
     const grid = evaluator.newGrid();
     const stops = new Int32Array(game.reels);
-    evaluator.spin(game.baseStrips, rng, grid, stops);
+    evaluator.spin(ante && game.anteStrips ? game.anteStrips : game.baseStrips, rng, grid, stops);
     return playFrom(rng, bet, grid, stops);
   }
 
@@ -79,7 +80,13 @@ export function createSebuscaEngine(game: SebuscaDef): RoundEngine {
    * puede re-tirar solo el giro base (barato, sin asignar nada) en vez de
    * rondas enteras.
    */
-  function playFrom(rng: Rng, bet: number, grid: Grid, stops: Int32Array): RoundResult {
+  function playFrom(
+    rng: Rng,
+    bet: number,
+    grid: Grid,
+    stops: Int32Array,
+    variant?: BonusVariant,
+  ): RoundResult {
     const lineBet = bet / lineCount;
     const cap = game.maxWinX * bet;
     const baseEval = evaluator.evaluate(grid, lineBet, bet, 1);
@@ -89,7 +96,7 @@ export function createSebuscaEngine(game: SebuscaDef): RoundEngine {
       grid: Array.from(grid),
       stops: Array.from(stops),
       multiplier: 1,
-      awarded: triggered ? game.freeSpinsAwarded : 0,
+      awarded: triggered ? game.freeSpinsAwarded + (variant?.extraSpins ?? 0) : 0,
       result: baseEval,
     };
 
@@ -99,7 +106,7 @@ export function createSebuscaEngine(game: SebuscaDef): RoundEngine {
 
     if (triggered) {
       const sticky = new Float64Array(cells);
-      let remaining = game.freeSpinsAwarded;
+      let remaining = game.freeSpinsAwarded + (variant?.extraSpins ?? 0);
       let played = 0;
 
       while (remaining > 0 && played < game.maxFreeSpins && !capped) {
@@ -161,11 +168,11 @@ export function createSebuscaEngine(game: SebuscaDef): RoundEngine {
     };
   }
 
-  function playFast(rng: Rng, bet: number, out: FastRound): void {
+  function playFast(rng: Rng, bet: number, out: FastRound, ante = false): void {
     const lineBet = bet / lineCount;
     const cap = game.maxWinX * bet;
 
-    evaluator.spin(game.baseStrips, rng, fastGrid);
+    evaluator.spin(ante && game.anteStrips ? game.anteStrips : game.baseStrips, rng, fastGrid);
     const baseWin = evaluator.evaluateTotal(fastGrid, lineBet, bet, 1);
     const triggered = evaluator.countScatters(fastGrid) >= game.scattersToTrigger;
 
@@ -216,7 +223,7 @@ export function createSebuscaEngine(game: SebuscaDef): RoundEngine {
     out.tier = 0;
   }
 
-  function playBonus(rng: Rng, bet: number): RoundResult {
+  function playBonus(rng: Rng, bet: number, variant?: BonusVariant): RoundResult {
     const grid = evaluator.newGrid();
     const stops = new Int32Array(game.reels);
     // Rechazo SOLO sobre el giro base. Es estadísticamente idéntico a
@@ -226,7 +233,7 @@ export function createSebuscaEngine(game: SebuscaDef): RoundEngine {
     for (let i = 0; i < 10_000_000; i++) {
       evaluator.spin(game.baseStrips, rng, grid, stops);
       if (evaluator.countScatters(grid) >= game.scattersToTrigger) {
-        return playFrom(rng, bet, grid, stops);
+        return playFrom(rng, bet, grid, stops, variant);
       }
     }
     throw new Error('playBonus: no salió un disparo en 10^7 intentos — revisar las tiras');

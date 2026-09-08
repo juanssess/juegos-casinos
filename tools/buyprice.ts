@@ -32,6 +32,19 @@ const seed = Number(arg('seed', '4242'));
 const bet = game.paylines.length;
 const rng = new Sfc32Rng(seed);
 
+/* Que variante cotizar. Sin --variant se mide la compra simple, que es el
+   comportamiento de siempre. */
+const variantId = arg('variant', '');
+const variante = variantId
+  ? (game.bonusVariants ?? []).find((v) => v.id === variantId)
+  : undefined;
+if (variantId && !variante) {
+  console.log(`El juego ${game.id} no tiene la variante "${variantId}".`);
+  console.log(`Tiene: ${(game.bonusVariants ?? []).map((v) => v.id).join(', ') || '(ninguna)'}`);
+  process.exit(1);
+}
+if (variante) console.log(`Variante: ${variante.label} — ${variante.desc}`);
+
 console.log(`Simulando ${rounds.toLocaleString('es-AR')} compras de bonus de ${game.id}...`);
 
 let sum = 0;
@@ -42,7 +55,7 @@ const capX = (game as { maxWinX?: number }).maxWinX ?? Infinity;
 const t0 = performance.now();
 
 for (let i = 0; i < rounds; i++) {
-  const r = engine.playBonus(rng, bet);
+  const r = engine.playBonus(rng, bet, variante);
   const x = r.totalWin / bet;
   sum += x;
   sumSq += x * x;

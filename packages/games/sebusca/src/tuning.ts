@@ -26,6 +26,59 @@ export const TARGET_RTP = 0.965;
 export const BONUS_BUY_X = 151;
 
 /**
+ * APUESTA ANTE.
+ *
+ * MEDICION — 80M de rondas por corrida, semilla 4242:
+ *
+ *   base                    95,82% +- 0,774   feature 1 de cada 259
+ *   ante [2,1,1,1,2] 1,75x  99,33% +- 1,214   feature 1 de cada 108
+ *
+ * A 1,75x los intervalos NO se solapaban: el ante quedaba 3,5 pp arriba.
+ * El retorno bruto medido es 173,83%, asi que el precio justo sale de
+ * 173,83 / 95,82 = 1,81x. A 1,80x el RTP del ante da 96,57% +- 1,18, que
+ * si se solapa con el del base.
+ *
+ * Se Busca arranca con UN scatter por tira —es el juego de volatilidad muy
+ * alta y la feature tiene que costar de encontrar— asi que el salto minimo
+ * posible es subir a dos en dos tiras. Eso ya duplica largo la frecuencia
+ * (259 -> 108), y por eso el ante sale mas caro que en Maverick: no hay un
+ * escalon mas chico disponible con conteos enteros.
+ */
+export const ANTE_COST_X = 1.8;
+export const ANTE_SCATTERS: readonly number[] = [2, 1, 1, 1, 2];
+
+/**
+ * Variantes de compra. Se Busca no tiene escalinata: lo que se compra son
+ * GIROS. Con wilds pegajosos, cada giro extra vale mas que el anterior
+ * —los multiplicadores ya puestos siguen ahi— asi que el precio no crece
+ * lineal con los giros. Otra razon para medirlo en vez de calcularlo.
+ */
+/* MEDICION — 2M de compras por variante, tools/buyprice.ts
+ *
+ *   variante   giros   EV medido           fijado    RTP     EV por giro
+ *   simple       8      145,244x +-0,772     151x    96,19%     18,2x
+ *   larga       12      455,430x +-1,561     472x    96,49%     38,0x
+ *   completa    16    1.011,086x +-2,471   1.048x    96,48%     63,2x
+ *
+ * Las tres alrededor del 95,82% que mide el juego base.
+ *
+ * MIRA LA ULTIMA COLUMNA. El EV por giro se TRIPLICA entre la corta y la
+ * larga: el doble de giros no vale el doble, vale siete veces. Son los
+ * wilds pegajosos — los multiplicadores que ya estan puestos siguen
+ * sumando en cada giro que queda, asi que el ultimo giro de una tanda de
+ * 16 juega sobre una grilla mucho mas cargada que el ultimo de una de 8.
+ *
+ * Es exactamente la razon por la que estos precios se miden y no se
+ * calculan. Cotizar "el doble de giros, el doble de precio" habria dejado
+ * la variante completa a 302x cuando vale 1.048x: un agujero por donde se
+ * iba la casa entera. */
+export const BONUS_VARIANTS = [
+  { id: 'simple', label: 'La Cacería', desc: '8 giros con wilds pegajosos', priceX: 151 },
+  { id: 'larga', label: 'Cacería larga', desc: '12 giros: más tiempo para que se peguen', extraSpins: 4, priceX: 472 },
+  { id: 'completa', label: 'Cacería completa', desc: '16 giros: el doble de tanda', extraSpins: 8, priceX: 1048 },
+] as const;
+
+/**
  * Reparto del RTP de líneas por símbolo. MUY top-heavy: en un juego de
  * volatilidad extrema los bajos son relleno y el jugador persigue al
  * forajido (H1).

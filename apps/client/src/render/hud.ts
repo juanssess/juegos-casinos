@@ -12,6 +12,18 @@
 
 import { Container, Graphics, Text } from 'pixi.js';
 import { PALETTE, TIMING } from './theme.ts';
+import { metal, vgrad } from './material.ts';
+
+/** Mezcla dos colores. Para derivar los tonos de un boton de su color base. */
+function mixHex(a: number, b: number, t: number): number {
+  const ar = (a >> 16) & 255, ag = (a >> 8) & 255, ab = a & 255;
+  const br = (b >> 16) & 255, bg = (b >> 8) & 255, bb = b & 255;
+  return (
+    (Math.round(ar + (br - ar) * t) << 16) |
+    (Math.round(ag + (bg - ag) * t) << 8) |
+    Math.round(ab + (bb - ab) * t)
+  );
+}
 
 function label(text: string, size: number, color: number, weight: '400' | '700' = '400'): Text {
   return new Text({
@@ -37,6 +49,7 @@ export class Hud {
   readonly onBuy: (() => void)[] = [];
   readonly onAuto: (() => void)[] = [];
   readonly onInfo: (() => void)[] = [];
+  readonly onAnte: (() => void)[] = [];
 
   #balance = label('0', 22, PALETTE.text, '700');
   #balanceCap = label('SALDO', 12, PALETTE.textDim);
@@ -54,6 +67,10 @@ export class Hud {
   #minus: Container;
   #plus: Container;
   #betCx = 0;
+  #anteBtn: Container | null = null;
+  #anteFace = new Graphics();
+  #anteText: Text;
+  #anteOn = false;
   #turboBtn: Container;
   #turboFace = new Graphics();
   #muteBtn: Container;
@@ -78,7 +95,7 @@ export class Hud {
   #countT = 0;
   #counting = false;
 
-  constructor(private width: number) {
+  constructor(private width: number, anteCostX?: number) {
     const v = this.view;
     this.#minus = this.#betButton('−', -1);
     this.#plus = this.#betButton('+', 1);
@@ -133,6 +150,25 @@ export class Hud {
     this.#drawBuy();
     v.addChild(this.#buyBtn);
 
+    /* El boton de ante solo existe si el juego tiene tiras de ante. No se
+       dibuja gris ni deshabilitado: un control apagado que nunca se prende
+       es peor que no tenerlo, porque el jugador lo busca y no entiende. */
+    this.#anteText = label('ANTE', 12, PALETTE.text, '700');
+    if (anteCostX) {
+      this.#anteText.text = `ANTE ×${anteCostX.toString().replace('.', ',')}`;
+      this.#anteBtn = new Container();
+      this.#anteText.anchor.set(0.5);
+      this.#anteBtn.addChild(this.#anteFace, this.#anteText);
+      this.#anteBtn.eventMode = 'static';
+      this.#anteBtn.cursor = 'pointer';
+      this.#anteBtn.on('pointertap', () => {
+        if (!this.#enabled) return;
+        for (const cb of this.onAnte) cb();
+      });
+      this.#drawAnte();
+      v.addChild(this.#anteBtn);
+    }
+
     this.#banner.anchor.set(0.5);
     this.#bannerSub.anchor.set(0.5);
     this.#banner.alpha = 0;
@@ -145,10 +181,21 @@ export class Hud {
 
   #betButton(glyph: string, delta: number): Container {
     const c = new Container();
+    /* Tecla con relieve, no recuadro plano. Un rectangulo del mismo color
+       en los cuatro lados no se lee como algo que se hunde al apretarlo. */
     const g = new Graphics()
+      .roundRect(0, 1.5, 30, 30, 8)
+      .fill({ color: 0x000000, alpha: 0.4 })
       .roundRect(0, 0, 30, 30, 8)
-      .fill({ color: PALETTE.frame, alpha: 0.5 })
-      .stroke({ width: 1.5, color: PALETTE.frameLight, alpha: 0.7 });
+      .fill(vgrad([
+        [0, mixHex(PALETTE.frameLight, 0xffffff, 0.25)],
+        [0.55, PALETTE.frame],
+        [1, mixHex(PALETTE.frame, 0x000000, 0.45)],
+      ]))
+      .roundRect(0, 0, 30, 30, 8)
+      .stroke({ width: 1.2, color: 0x140d06, alpha: 0.7 })
+      .moveTo(7, 1.6).lineTo(23, 1.6)
+      .stroke({ width: 1.4, color: 0xffffff, alpha: 0.22 });
     const t = label(glyph, 17, PALETTE.text, '700');
     t.anchor.set(0.5);
     t.x = 15;
@@ -174,11 +221,68 @@ export class Hud {
     return c;
   }
 
+  /**
+   * Un interruptor: apagado se hunde, prendido sobresale y se ilumina.
+   *
+   * Que el estado se lea por la FORMA y no solo por el color importa: mudo
+   * y turbo son decisiones que el jugador toma de reojo, sin frenar la
+   * partida, y de reojo un cambio de tono se pierde.
+   */
   #toggleFace(g: Graphics, active: boolean): void {
-    g.clear()
-      .roundRect(0, 0, 34, 34, 9)
-      .fill({ color: active ? 0x6b4a22 : 0x241a0e, alpha: 0.9 })
-      .stroke({ width: 1.5, color: active ? PALETTE.win : PALETTE.frameLight, alpha: active ? 1 : 0.45 });
+    g.clear();
+    if (active) {
+      g.roundRect(0, 1.5, 34, 34, 9).fill({ color: 0x000000, alpha: 0.4 });
+      g.roundRect(0, 0, 34, 34, 9).fill(vgrad([
+        [0, mixHex(PALETTE.win, 0xffffff, 0.35)],
+        [0.55, PALETTE.win],
+        [1, mixHex(PALETTE.win, 0x000000, 0.4)],
+      ]));
+      g.roundRect(0, 0, 34, 34, 9).stroke({ width: 1.2, color: 0x140d06, alpha: 0.75 });
+      g.moveTo(8, 1.8).lineTo(26, 1.8).stroke({ width: 1.4, color: 0xffffff, alpha: 0.3 });
+    } else {
+      g.roundRect(0, 0, 34, 34, 9).fill(vgrad([
+        [0, 0x140e07],
+        [1, 0x2a1f12],
+      ]));
+      g.roundRect(0, 0, 34, 34, 9).stroke({ width: 1.2, color: 0x0d0904, alpha: 0.8 });
+      g.moveTo(8, 32.4).lineTo(26, 32.4)
+        .stroke({ width: 1.2, color: PALETTE.frameLight, alpha: 0.28 });
+    }
+  }
+
+  /**
+   * El interruptor de ante.
+   *
+   * Prendido se ilumina y sobresale, apagado se hunde. Es la misma gramatica
+   * que turbo y mudo, y a proposito: el jugador ya aprendio que en esta fila
+   * lo que brilla esta activo.
+   */
+  #drawAnte(): void {
+    const on = this.#anteOn;
+    const w = this.#anteText.width + 26;
+    const h = 30;
+    this.#anteFace.clear();
+    if (on) {
+      this.#anteFace.roundRect(0, 1.5, w, h, 9).fill({ color: 0x000000, alpha: 0.4 });
+      this.#anteFace.roundRect(0, 0, w, h, 9).fill(vgrad([
+        [0, mixHex(PALETTE.scatter, 0xffffff, 0.4)],
+        [0.55, PALETTE.scatter],
+        [1, mixHex(PALETTE.scatter, 0x000000, 0.4)],
+      ]));
+      this.#anteFace.roundRect(0, 0, w, h, 9).stroke({ width: 1.2, color: 0x081412, alpha: 0.8 });
+    } else {
+      this.#anteFace.roundRect(0, 0, w, h, 9).fill(vgrad([[0, 0x140e07], [1, 0x2a1f12]]));
+      this.#anteFace.roundRect(0, 0, w, h, 9)
+        .stroke({ width: 1.2, color: PALETTE.scatter, alpha: 0.4 });
+    }
+    this.#anteText.style.fill = on ? 0x06201d : PALETTE.textDim;
+    this.#anteText.x = w / 2;
+    this.#anteText.y = h / 2;
+  }
+
+  setAnte(on: boolean): void {
+    this.#anteOn = on;
+    if (this.#anteBtn) this.#drawAnte();
   }
 
   #drawBuy(): void {
@@ -196,15 +300,53 @@ export class Hud {
     this.#buyBtn.cursor = on ? 'pointer' : 'default';
   }
 
+  /**
+   * EL BOTON DE GIRAR — la pieza mas mirada del juego.
+   *
+   * Eran dos circulos de color plano, uno adentro del otro. Un disco plano
+   * no invita a apretarse: para que un boton pida el dedo tiene que
+   * SOBRESALIR, y eso son cuatro cosas en orden — sombra abajo, aro de
+   * metal, cara con degradado que va de claro arriba a oscuro abajo, y un
+   * reflejo en el tercio superior.
+   *
+   * Ese degradado es el que hace todo el trabajo: claro arriba es como se
+   * ve una superficie convexa iluminada desde arriba, que es de donde viene
+   * la luz en el resto del juego. Al reves se veria hundido.
+   */
   #drawButton(): void {
     const r = 42;
+    const ocupado = this.#busy;
+
+    const aro = ocupado ? 0x7a5c28 : PALETTE.frame;
+    const aroClaro = ocupado ? 0xa88a44 : PALETTE.frameLight;
+    const cara = ocupado ? 0xc9a344 : PALETTE.win;
+
+    this.#buttonFace.clear();
+
+    // Sombra: apoya el boton sobre el mueble.
+    this.#buttonFace.circle(r, r + 3, r).fill({ color: 0x000000, alpha: 0.45 });
+
+    // Aro de metal.
+    this.#buttonFace.circle(r, r, r).fill(metal(aro, aroClaro, 0xffe9b0));
+    this.#buttonFace.circle(r, r, r).stroke({ width: 1.6, color: 0x1a1006, alpha: 0.8 });
+
+    // La cara, convexa: claro arriba, oscuro abajo.
+    this.#buttonFace.circle(r, r, r - 6).fill(vgrad([
+      [0, mixHex(cara, 0xffffff, 0.5)],
+      [0.5, cara],
+      [1, mixHex(cara, 0x000000, 0.4)],
+    ]));
+
+    // Reflejo en el tercio superior: el detalle que lo vuelve un objeto.
     this.#buttonFace
-      .clear()
-      .circle(r, r, r)
-      .fill({ color: this.#busy ? 0x8a6830 : PALETTE.frameLight })
-      .circle(r, r, r - 5)
-      .fill({ color: this.#busy ? 0xd9ae4a : PALETTE.win })
-      .stroke({ width: 2, color: 0x2a1a08, alpha: 0.4 });
+      .ellipse(r, r - r * 0.34, (r - 6) * 0.68, (r - 6) * 0.34)
+      .fill({ color: 0xffffff, alpha: ocupado ? 0.14 : 0.26 });
+
+    // Y un filo claro abajo: la luz que rebota del mueble.
+    this.#buttonFace
+      .arc(r, r, r - 6.5, 0.4, Math.PI - 0.4)
+      .stroke({ width: 1.6, color: 0xffffff, alpha: 0.18 });
+
     this.#buttonText.x = r;
     this.#buttonText.y = r;
   }
@@ -255,6 +397,9 @@ export class Hud {
 
     // Compra del bonus, bajo el saldo.
     this.#buyBtn.position.set(4, 72);
+    // El ante va pegado a la compra: las dos son decisiones de plata, y
+    // conviene que se lean juntas y lejos del boton de girar.
+    if (this.#anteBtn) this.#anteBtn.position.set(4, 116);
 
     this.#banner.x = width / 2;
     this.#banner.y = -180;

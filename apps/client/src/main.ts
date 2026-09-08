@@ -270,7 +270,7 @@ async function main(): Promise<void> {
   footer.anchor.set(0.5, 0);
   root.addChild(footer);
 
-  const hud = new Hud(boardW);
+  const hud = new Hud(boardW, cfg.anteCostX);
   root.addChild(hud.view);
 
   function layout(): void {
@@ -332,6 +332,13 @@ async function main(): Promise<void> {
   // ── Estado de la sesión ──────────────────────────────────────────────────
   let balance = auth.balance;
   let bet = BET_LEVELS[0]!;
+
+  /* APUESTA ANTE.
+     Vive como un booleano y viaja en cada pedido; no es un "modo" que el
+     servidor recuerde. Ver el comentario en SpinRequest: si el que cobra y
+     el que juega pudieran desincronizarse, siempre se desincronizan en
+     contra de alguien. */
+  let anteOn = false;
   let busyFlag = false;
   /**
    * `busy` es una propiedad y no una variable suelta porque el casino que
@@ -584,7 +591,7 @@ async function main(): Promise<void> {
     audio.click();
 
     try {
-      const res = await rgs.spin({ bet });
+      const res = await rgs.spin({ bet, ante: anteOn });
       balance = res.balance;
       // Mostramos el saldo YA descontado pero SIN el premio: el premio se
       // acredita visualmente al final. Mostrar el saldo final de entrada
@@ -628,7 +635,7 @@ async function main(): Promise<void> {
     wins.clear();
 
     try {
-      const res = await rgs.buyBonus({ bet });
+      const res = await rgs.buyBonus({ bet, variant: variantElegida || undefined });
       balance = res.balance;
       hud.setBalance(balance - res.round.totalWin);
       await playRound(res.round.steps, res.round.bet, res.round.roundId, -1, res.round.climb);
@@ -636,7 +643,9 @@ async function main(): Promise<void> {
       hud.setBalance(balance);
     } catch (e) {
       if (e instanceof RgsError && e.code === RGS_ERRORS.INSUFFICIENT_FUNDS) {
-        hud.showBanner('SALDO INSUFICIENTE', `la compra cuesta ${(bet * cfg.bonusBuyX).toLocaleString('es-AR')}`);
+        const v = VARIANTES.find((x) => x.id === variantElegida);
+        const cuesta = bet * (v ? v.priceX : cfg.bonusBuyX);
+        hud.showBanner('SALDO INSUFICIENTE', `la compra cuesta ${cuesta.toLocaleString('es-AR')}`);
       } else {
         hud.showBanner('ERROR', e instanceof Error ? e.message : 'desconocido');
         console.error(e);
@@ -652,77 +661,154 @@ async function main(): Promise<void> {
 
   // ── Modal de confirmación de compra ─────────────────────────────────────
   // Comprar 80x tu apuesta no es un click cualquiera: se confirma siempre.
+  /* ============================================================
+     MENU DE COMPRA
+
+     Antes era un cartel con un precio y dos botones. Ahora hay varias
+     variantes y cada una vale distinto, asi que el modal muestra la
+     ESCALERA completa: que te llevas y cuanto cuesta, una al lado de la
+     otra.
+
+     Mostrarlas juntas no es solo comodidad. Un precio suelto no se puede
+     juzgar; tres precios con lo que dan al lado si. Y como los tres estan
+     cotizados al mismo RTP, la eleccion es de gusto y de bolsillo, no una
+     trampa donde una opcion es peor negocio que las otras.
+     ============================================================ */
   const buyModal = new Container();
   buyModal.visible = false;
+  let variantElegida = '';
+
+  const VARIANTES = cfg.bonusVariants && cfg.bonusVariants.length
+    ? cfg.bonusVariants
+    : [{ id: 'simple', label: 'Comprar el bonus', desc: 'Giros gratis garantizados', priceX: cfg.bonusBuyX }];
+
   {
     const shade = new Graphics()
       .rect(-30, -30, boardW + 60, boardH + 200)
-      .fill({ color: 0x050302, alpha: 0.82 });
+      .fill({ color: 0x050302, alpha: 0.85 });
     shade.eventMode = 'static'; // bloquea clicks al tablero
     buyModal.addChild(shade);
 
+    const alto = 130 + VARIANTES.length * 74;
+    const ancho = 440;
+    const x0 = boardW / 2 - ancho / 2;
+    const y0 = boardH / 2 - alto / 2;
+
     const panel = new Graphics()
-      .roundRect(boardW / 2 - 190, boardH / 2 - 100, 380, 200, 16)
-      .fill(0x1c150d)
-      .stroke({ width: 2.5, color: PALETTE.frameLight });
+      .roundRect(x0, y0 + 4, ancho, alto, 18)
+      .fill({ color: 0x000000, alpha: 0.5 })
+      .roundRect(x0, y0, ancho, alto, 18)
+      .fill(vgrad([[0, 0x241b10], [1, 0x140e08]]))
+      .roundRect(x0, y0, ancho, alto, 18)
+      .stroke({ width: 2, color: PALETTE.frameLight, alpha: 0.8 });
     buyModal.addChild(panel);
 
     const t1 = new Text({
-      text: hasClimb ? 'COMPRAR LA ESCALINATA' : 'COMPRAR GIROS GRATIS',
-      style: { fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: '700', fill: PALETTE.win, letterSpacing: 1 },
+      text: 'COMPRAR EL BONUS',
+      style: { fontFamily: 'Georgia, serif', fontSize: 21, fontWeight: '700', fill: PALETTE.win, letterSpacing: 1.4 },
     });
     t1.anchor.set(0.5);
-    t1.position.set(boardW / 2, boardH / 2 - 62);
+    t1.position.set(boardW / 2, y0 + 30);
     buyModal.addChild(t1);
 
-    const t2 = new Text({
-      text: '',
-      style: { fontFamily: 'Georgia, serif', fontSize: 17, fill: PALETTE.text, align: 'center' },
+    const sub = new Text({
+      text: `Las tres pagan el mismo RTP (${(cfg.rtp * 100).toFixed(2)}%): cambia qué te llevás, no la ventaja.`,
+      style: { fontFamily: 'Georgia, serif', fontSize: 11.5, fill: PALETTE.textDim, align: 'center' },
     });
-    t2.anchor.set(0.5);
-    t2.position.set(boardW / 2, boardH / 2 - 18);
-    t2.label = 'buy-modal-text';
-    buyModal.addChild(t2);
+    sub.anchor.set(0.5);
+    sub.position.set(boardW / 2, y0 + 52);
+    buyModal.addChild(sub);
 
-    const mkBtn = (text: string, x: number, gold: boolean, cb: () => void): Container => {
+    /** Una fila del menu: nombre, que te llevas, y el precio grande. */
+    const fila = (v: { id: string; label: string; desc: string; priceX: number }, i: number): Container => {
       const c = new Container();
-      const g = new Graphics()
-        .roundRect(0, 0, 150, 46, 12)
-        .fill(gold ? PALETTE.win : 0x241a0e)
-        .stroke({ width: 2, color: gold ? PALETTE.frameLight : PALETTE.textDim });
-      const t = new Text({
-        text,
-        style: { fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: '700', fill: gold ? 0x2a1a08 : PALETTE.text },
+      const fy = y0 + 74 + i * 74;
+      const g = new Graphics();
+      const dibujar = (hover: boolean): void => {
+        g.clear()
+          .roundRect(x0 + 16, fy, ancho - 32, 62, 12)
+          .fill(vgrad([
+            [0, hover ? 0x3d2d18 : 0x2c2113],
+            [1, hover ? 0x281c0e : 0x1b1309],
+          ]))
+          .roundRect(x0 + 16, fy, ancho - 32, 62, 12)
+          .stroke({ width: 1.4, color: PALETTE.frameLight, alpha: hover ? 0.9 : 0.35 });
+      };
+      dibujar(false);
+      c.addChild(g);
+
+      const nom = new Text({
+        text: v.label,
+        style: { fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: '700', fill: PALETTE.text },
       });
-      t.anchor.set(0.5);
-      t.position.set(75, 23);
-      c.addChild(g, t);
-      c.position.set(x, boardH / 2 + 26);
+      nom.position.set(x0 + 32, fy + 12);
+      c.addChild(nom);
+
+      const des = new Text({
+        text: v.desc,
+        style: { fontFamily: 'Georgia, serif', fontSize: 11.5, fill: PALETTE.textDim },
+      });
+      des.position.set(x0 + 32, fy + 36);
+      c.addChild(des);
+
+      const precio = new Text({
+        text: (bet * v.priceX).toLocaleString('es-AR'),
+        style: { fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: '700', fill: PALETTE.win },
+      });
+      precio.anchor.set(1, 0);
+      precio.position.set(x0 + ancho - 32, fy + 11);
+      precio.label = `precio-${v.id}`;
+      c.addChild(precio);
+
+      const mult = new Text({
+        text: `${v.priceX}× tu apuesta`,
+        style: { fontFamily: 'Georgia, serif', fontSize: 10.5, fill: PALETTE.textDim },
+      });
+      mult.anchor.set(1, 0);
+      mult.position.set(x0 + ancho - 32, fy + 38);
+      c.addChild(mult);
+
       c.eventMode = 'static';
       c.cursor = 'pointer';
-      c.on('pointertap', cb);
+      c.on('pointerover', () => dibujar(true));
+      c.on('pointerout', () => dibujar(false));
+      c.on('pointertap', () => {
+        buyModal.visible = false;
+        variantElegida = v.id;
+        void doBuy();
+      });
       return c;
     };
-    buyModal.addChild(
-      mkBtn('COMPRAR', boardW / 2 - 165, true, () => {
-        buyModal.visible = false;
-        void doBuy();
-      }),
-      mkBtn('CANCELAR', boardW / 2 + 15, false, () => {
-        buyModal.visible = false;
-        audio.click();
-      }),
-    );
+
+    VARIANTES.forEach((v, i) => buyModal.addChild(fila(v, i)));
+
+    const cancelar = new Text({
+      text: 'Cancelar',
+      style: { fontFamily: 'Georgia, serif', fontSize: 14, fill: PALETTE.textDim },
+    });
+    cancelar.anchor.set(0.5);
+    cancelar.position.set(boardW / 2, y0 + alto - 26);
+    cancelar.eventMode = 'static';
+    cancelar.cursor = 'pointer';
+    cancelar.on('pointertap', () => { buyModal.visible = false; audio.click(); });
+    buyModal.addChild(cancelar);
   }
+
   board.addChild(buyModal);
 
   function askBuy(): void {
     if (busyState.value || buyModal.visible) return;
     audio.click();
-    const price = bet * cfg.bonusBuyX;
-    const t = buyModal.children.find((c) => c.label === 'buy-modal-text') as Text;
-    t.text = `${price.toLocaleString('es-AR')} créditos (${cfg.bonusBuyX}× tu apuesta)\nGiros gratis garantizados · RTP 96.6%`;
+    refrescarPrecios();
     buyModal.visible = true;
+  }
+
+  /** Los precios del menu siguen a la apuesta, que se puede cambiar antes. */
+  function refrescarPrecios(): void {
+    for (const v of VARIANTES) {
+      const t = buyModal.getChildByLabel(`precio-${v.id}`, true) as Text | null;
+      if (t) t.text = (bet * v.priceX).toLocaleString('es-AR');
+    }
   }
 
   // ── Autoplay ────────────────────────────────────────────────────────────
@@ -968,6 +1054,12 @@ async function main(): Promise<void> {
     bet = next;
     hud.setBet(bet);
     hud.setBuyPrice(bet * cfg.bonusBuyX);
+    refrescarPrecios();
+    audio.click();
+  });
+  hud.onAnte.push(() => {
+    anteOn = !anteOn;
+    hud.setAnte(anteOn);
     audio.click();
   });
   hud.onBuy.push(askBuy);

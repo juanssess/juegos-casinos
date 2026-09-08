@@ -176,6 +176,8 @@ export class LocalRgs implements RgsClient {
       climbTiers: g.climb?.tiers ?? [],
       climbAscendPerMil: g.climb?.ascendPerMil ?? [],
       bonusBuyX: this.#opts.bonusBuyX,
+      bonusVariants: this.#game.bonusVariants,
+      anteCostX: this.#game.anteStrips ? this.#game.anteCostX : undefined,
       ...(this.#opts.maxWinX ? { maxWinX: this.#opts.maxWinX } : {}),
     };
   }
@@ -233,16 +235,30 @@ export class LocalRgs implements RgsClient {
 
   async spin(req: SpinRequest): Promise<SpinResponse> {
     await this.#latency();
-    this.#validate(req, req.bet);
-    const result = this.#engine.play(this.#rng, req.bet);
-    return this.#settle(result, req, req.bet, false);
+    /* El costo se calcula ACA, del pedido, y no de un modo guardado en la
+       sesion. Si el ante viviera como estado del lado del servidor, un
+       desfasaje con el cliente cobraria una cosa y jugaria otra — y siempre
+       en contra de alguien. Que viaje en el pedido hace imposible ese hueco. */
+    const ante = req.ante === true && !!this.#game.anteStrips;
+    const cost = Math.round(req.bet * (ante ? (this.#game.anteCostX ?? 1) : 1));
+    this.#validate(req, cost);
+    const result = this.#engine.play(this.#rng, req.bet, ante);
+    return this.#settle(result, req, cost, false);
   }
 
   async buyBonus(req: SpinRequest): Promise<SpinResponse> {
     await this.#latency();
-    const cost = req.bet * this.#opts.bonusBuyX;
+
+    /* La variante decide el precio. Si llega un id que no existe se cae a la
+       compra simple en vez de tirar error: un cliente viejo pidiendo una
+       variante que ya no esta tiene que poder seguir jugando. */
+    const variantes = this.#game.bonusVariants ?? [];
+    const v = req.variant ? variantes.find((x) => x.id === req.variant) : undefined;
+    const priceX = v ? v.priceX : this.#opts.bonusBuyX;
+
+    const cost = Math.round(req.bet * priceX);
     this.#validate(req, cost);
-    const result = this.#engine.playBonus(this.#rng, req.bet);
+    const result = this.#engine.playBonus(this.#rng, req.bet, v);
     return this.#settle(result, req, cost, true);
   }
 

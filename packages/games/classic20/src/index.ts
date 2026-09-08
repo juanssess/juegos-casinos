@@ -19,6 +19,7 @@ import {
   type SlotGameDef,
   type SymbolCounts,
 } from '@casino/math';
+import { ANTE_SCATTERS, ANTE_COST_X, BONUS_VARIANTS } from './tuning.ts';
 import { PAYLINES } from './paylines.ts';
 
 const REELS = 5;
@@ -88,6 +89,24 @@ const FREE_COUNTS: readonly SymbolCounts[] = [
 ];
 
 /**
+ * TIRAS DE APUESTA ANTE — pagas mas, disparas mas seguido.
+ *
+ * Identicas a las de base salvo por el conteo de SCATTER. Ese es el unico
+ * numero que hace falta mover: mas scatters en la tira, mas seguido salen
+ * los tres que disparan la feature.
+ *
+ * El valor de aca NO esta elegido a ojo. La regla que vuelve honesta a la
+ * apuesta ante es que si cobras 1,25x tenes que devolver 1,25x mas premio,
+ * o el RTP declarado deja de valer para quien la usa. Asi que este numero
+ * se ajusta MIDIENDO hasta que el RTP con ante coincide con el del base.
+ * El resultado de esa medicion esta en tuning.ts, al lado del precio.
+ */
+const ANTE_COUNTS: readonly SymbolCounts[] = BASE_COUNTS.map((r, i) => ({
+  ...r,
+  [SYM.SCATTER]: ANTE_SCATTERS[i]!,
+}));
+
+/**
  * Semilla fija para armar las tiras.
  *
  * Las tiras tienen que ser SIEMPRE las mismas: son parte de la definición del
@@ -105,6 +124,12 @@ export const GAME: SlotGameDef = {
   scatterPaytable: SCATTER_PAYTABLE,
   baseStrips: buildStrips(BASE_COUNTS, new Sfc32Rng(STRIP_SEED)),
   freeStrips: buildStrips(FREE_COUNTS, new Sfc32Rng(STRIP_SEED ^ 0xf1ee)),
+  // Semilla propia: si compartiera la del base, las dos tiras quedarian
+  // correlacionadas y el ante seria "la misma tira con un scatter mas",
+  // no una tira distinta.
+  anteStrips: buildStrips(ANTE_COUNTS, new Sfc32Rng(STRIP_SEED ^ 0xa17e)),
+  anteCostX: ANTE_COST_X,
+  bonusVariants: BONUS_VARIANTS,
   scattersToTrigger: 3,
   // Fallback si no hubiera escalinata; con `climb` presente no se usan.
   freeSpinsAwarded: 12,

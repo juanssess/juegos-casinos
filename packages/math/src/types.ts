@@ -125,6 +125,33 @@ export interface ClimbResult {
   multiplier: number;
 }
 
+/**
+ * Una variante de compra de bonus.
+ *
+ * Comprar el bonus no tiene por qué ser una sola cosa. Un jugador que paga
+ * más quiere algo concreto a cambio, y "más caro" sin nada atrás es sólo
+ * más caro. Cada variante fuerza una condición distinta sobre la feature.
+ *
+ * `priceX` NO se elige: se MIDE con tools/buyprice.ts y sale de
+ * `EV / RTP_objetivo`, igual que el precio de la compra simple. Si alguna
+ * variante quedara por debajo de ese precio sería un agujero: convendría
+ * comprar siempre esa y nunca girar.
+ */
+export interface BonusVariant {
+  id: string;
+  label: string;
+  /** Qué te llevás, dicho para el jugador. */
+  desc: string;
+  /** Nivel mínimo garantizado de la escalinata (1-based). Sólo con `climb`. */
+  minTier?: number;
+  /** Giros gratis extra sobre lo que dé la feature. */
+  extraSpins?: number;
+  /** Multiplicador mínimo garantizado, para juegos sin escalinata. */
+  minMultiplier?: number;
+  /** Precio en múltiplos de la apuesta. MEDIDO, no elegido. */
+  priceX: number;
+}
+
 /** Definición completa de un juego de slot de líneas. */
 export interface SlotGameDef {
   id: string;
@@ -150,4 +177,23 @@ export interface SlotGameDef {
   climb?: ClimbDef;
   /** Tope de giros gratis acumulados (evita colas infinitas en la simulación). */
   maxFreeSpins: number;
+
+  /**
+   * APUESTA ANTE — pagar más por más chance de bonus.
+   *
+   * Son tiras de base con MÁS scatters. El jugador paga `anteCostX` veces la
+   * apuesta y a cambio la feature dispara más seguido.
+   *
+   * La regla que lo vuelve honesto y no un truco: si cobrás 1,25× tenés que
+   * devolver 1,25× más premio, o el RTP declarado deja de ser cierto para
+   * quien juega con ante. Por eso el conteo de scatters de estas tiras no se
+   * elige a ojo: se ajusta MIDIENDO hasta que el RTP con ante coincide con
+   * el del juego base. Ver el comentario en las tiras de cada juego.
+   */
+  anteStrips?: ReelStrips;
+  /** Cuánto multiplica el costo de la apuesta. */
+  anteCostX?: number;
+
+  /** Variantes de compra del bonus. La primera es la simple. */
+  bonusVariants?: readonly BonusVariant[];
 }

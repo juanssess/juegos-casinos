@@ -35,10 +35,20 @@ if (has('strips')) {
 
 process.stdout.write(`Simulando ${rounds.toLocaleString('es-AR')} rondas de ${game.id}...\n`);
 
+const ante = has('ante');
+if (ante && !game.anteStrips) {
+  console.log(`${game.id} no tiene tiras de apuesta ante.`);
+  process.exit(1);
+}
+if (ante) {
+  console.log(`Con APUESTA ANTE: costo x${game.anteCostX}, tiras con mas scatters.`);
+}
+
 const report = simulate(game, {
   rounds,
   bet,
   seed,
+  ante,
   engine: entry.engine(),
   chunk: Math.max(1, Math.floor(rounds / 10)),
   onProgress: (done, total) => {

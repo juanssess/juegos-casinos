@@ -29,6 +29,12 @@ export interface SimOptions {
   /** Callback de progreso cada `chunk` rondas. */
   onProgress?: (done: number, total: number) => void;
   chunk?: number;
+  /**
+   * Simular con apuesta ante: tiras con mas scatters y costo multiplicado.
+   * Es la medicion que decide si el ante es honesto, asi que el costo se
+   * aplica de verdad al total apostado.
+   */
+  ante?: boolean;
 }
 
 export interface SimReport {
@@ -131,7 +137,7 @@ export function simulate(game: SlotGameDef, opts: SimOptions): SimReport {
   const t0 = performance.now();
 
   for (let i = 0; i < rounds; i++) {
-    engine.playFast(rng, bet, out);
+    engine.playFast(rng, bet, out, opts.ante === true);
 
     sumBase += out.baseWin;
     sumFeature += out.featureWin;
@@ -160,7 +166,11 @@ export function simulate(game: SlotGameDef, opts: SimOptions): SimReport {
   }
 
   const elapsedMs = performance.now() - t0;
-  const totalBet = rounds * bet;
+  /* Con apuesta ante cada ronda cuesta mas, asi que lo apostado NO es
+     rondas x apuesta. Olvidarse de esto daria un RTP inflado justo en la
+     medicion que decide si el ante es honesto. */
+  const costoX = opts.ante === true ? (game.anteCostX ?? 1) : 1;
+  const totalBet = rounds * bet * costoX;
   const rtpBase = sumBase / totalBet;
   const rtpFeature = sumFeature / totalBet;
   const rtpTotal = rtpBase + rtpFeature;

@@ -54,6 +54,18 @@ export interface GameConfig {
   climbAscendPerMil: readonly number[];
   /** Precio de la compra del bonus, en múltiplos de la apuesta. */
   bonusBuyX: number;
+  /** Variantes de compra: cada una con su precio MEDIDO. */
+  bonusVariants?: readonly {
+    id: string;
+    label: string;
+    desc: string;
+    priceX: number;
+  }[];
+  /** Cuanto multiplica el costo la apuesta ante. Ausente = el juego no la tiene. */
+  anteCostX?: number;
+  /** Cada cuantas rondas dispara la feature, con y sin ante. Para la pantalla de info. */
+  featureEvery?: number;
+  featureEveryAnte?: number;
   /** Tope de premio por ronda, en múltiplos de apuesta (0 = sin tope). */
   maxWinX?: number;
 }
@@ -81,6 +93,16 @@ export interface AuthenticateResponse {
 
 export interface SpinRequest {
   bet: Credits;
+  /**
+   * Apuesta ante: cuesta `anteCostX` veces la apuesta y usa tiras con mas
+   * scatters. Viaja en el pedido y no como estado del cliente a proposito:
+   * el que cobra tiene que saber, en la misma llamada, cuanto cobrar. Si
+   * fuera un modo guardado aparte, un desfasaje entre cliente y servidor
+   * cobraria una cosa y jugaria otra.
+   */
+  ante?: boolean;
+  /** Variante de compra del bonus. Solo la mira buyBonus. */
+  variant?: string;
 }
 
 /** Una línea ganadora, con todo lo necesario para dibujarla. */

@@ -13,7 +13,9 @@
  *    de la semilla y verificar el resultado.
  */
 
-import type { ClimbResult, Grid, SlotGameDef, SpinEval } from './types.ts';
+import type { ClimbResult, Grid, SlotGameDef, SpinEval,
+  BonusVariant,
+} from './types.ts';
 import type { Rng } from './rng.ts';
 import { createEvaluator, type Evaluator } from './evaluate.ts';
 
@@ -22,7 +24,7 @@ import { createEvaluator, type Evaluator } from './evaluate.ts';
  * ese orden es parte del contrato de reproducibilidad — el simulador, el
  * medidor de frecuencias y el juego real DEBEN consumir el RNG igual.
  */
-export function resolveClimb(game: SlotGameDef, rng: Rng): ClimbResult {
+export function resolveClimb(game: SlotGameDef, rng: Rng, minTier = 1): ClimbResult {
   const climb = game.climb!;
   const ascents: boolean[] = [];
   let tier = 1;
@@ -32,6 +34,16 @@ export function resolveClimb(game: SlotGameDef, rng: Rng): ClimbResult {
     if (!up) break;
     tier++;
   }
+
+  /* Piso garantizado, para las variantes de compra.
+     Se sortea la escalada COMPLETA igual y recién después se levanta el
+     resultado si quedó por debajo. Podría parecer desperdicio sortear algo
+     que se va a pisar, pero no lo es: mantiene idéntico el consumo del RNG
+     entre una ronda normal y una comprada, y eso es lo que permite que el
+     cliente reproduzca cualquier ronda con la misma semilla. Cortar el
+     sorteo cambiaría la secuencia y rompería esa propiedad. */
+  if (minTier > tier) tier = Math.min(minTier, climb.tiers.length);
+
   const pkg = climb.tiers[tier - 1]!;
   return { ascents, tier, spins: pkg.spins, multiplier: pkg.multiplier };
 }
@@ -80,9 +92,9 @@ export interface RoundEngine {
   game: SlotGameDef;
   evaluator: Evaluator;
   /** Ronda completa con todo el detalle, para jugar de verdad. */
-  play(rng: Rng, bet: number): RoundResult;
+  play(rng: Rng, bet: number, ante?: boolean): RoundResult;
   /** Ronda sin detalle, para simular. Reusa un único buffer interno. */
-  playFast(rng: Rng, bet: number, out: FastRound): void;
+  playFast(rng: Rng, bet: number, out: FastRound, ante?: boolean): void;
   /**
    * Compra del bonus: una ronda garantizada con feature.
    *
@@ -92,7 +104,7 @@ export interface RoundEngine {
    * del giro que disparó. Es la forma honesta y auditable de implementarlo:
    * el precio justo sale de medir E[premio | disparo] en el simulador.
    */
-  playBonus(rng: Rng, bet: number): RoundResult;
+  playBonus(rng: Rng, bet: number, variant?: BonusVariant): RoundResult;
 }
 
 export function createRoundEngine(game: SlotGameDef): RoundEngine {
@@ -104,10 +116,15 @@ export function createRoundEngine(game: SlotGameDef): RoundEngine {
     return bet / lineCount;
   }
 
-  function play(rng: Rng, bet: number): RoundResult {
+  /**
+   * Una ronda. Con `ante` usa las tiras de apuesta ante, que traen más
+   * scatters; el costo extra lo cobra quien llama, no el motor.
+   */
+  function play(rng: Rng, bet: number, ante = false): RoundResult {
     const grid = evaluator.newGrid();
     const stops = new Int32Array(game.reels);
-    evaluator.spin(game.baseStrips, rng, grid, stops);
+    const strips = ante && game.anteStrips ? game.anteStrips : game.baseStrips;
+    evaluator.spin(strips, rng, grid, stops);
     return playFrom(rng, bet, grid, stops);
   }
 
@@ -116,7 +133,13 @@ export function createRoundEngine(game: SlotGameDef): RoundEngine {
    * compra del bonus pueda rechazar solo el giro base, sin asignar nada por
    * cada intento fallido (son ~200 por compra).
    */
-  function playFrom(rng: Rng, bet: number, grid: Grid, stops: Int32Array): RoundResult {
+  function playFrom(
+    rng: Rng,
+    bet: number,
+    grid: Grid,
+    stops: Int32Array,
+    variant?: BonusVariant,
+  ): RoundResult {
     const lineBet = lineBetOf(bet);
     const baseEval = evaluator.evaluate(grid, lineBet, bet, 1);
     const triggered = baseEval.scatterCount >= game.scattersToTrigger;
@@ -126,9 +149,13 @@ export function createRoundEngine(game: SlotGameDef): RoundEngine {
     let spinsAwarded = game.freeSpinsAwarded;
     let multiplier = game.freeSpinMultiplier;
     if (triggered && game.climb) {
-      climb = resolveClimb(game, rng);
+      climb = resolveClimb(game, rng, variant?.minTier ?? 1);
       spinsAwarded = climb.spins;
       multiplier = climb.multiplier;
+    }
+    if (variant?.extraSpins) spinsAwarded += variant.extraSpins;
+    if (variant?.minMultiplier && variant.minMultiplier > multiplier) {
+      multiplier = variant.minMultiplier;
     }
 
     const base: SpinRecord = {
@@ -185,10 +212,10 @@ export function createRoundEngine(game: SlotGameDef): RoundEngine {
     };
   }
 
-  function playFast(rng: Rng, bet: number, out: FastRound): void {
+  function playFast(rng: Rng, bet: number, out: FastRound, ante = false): void {
     const lineBet = lineBetOf(bet);
 
-    evaluator.spin(game.baseStrips, rng, scratch);
+    evaluator.spin(ante && game.anteStrips ? game.anteStrips : game.baseStrips, rng, scratch);
     const baseWin = evaluator.evaluateTotal(scratch, lineBet, bet, 1);
     const scatters = evaluator.countScatters(scratch);
     const triggered = scatters >= game.scattersToTrigger;
@@ -228,7 +255,11 @@ export function createRoundEngine(game: SlotGameDef): RoundEngine {
     out.tier = tier;
   }
 
-  function playBonus(rng: Rng, bet: number): RoundResult {
+  /**
+   * Una ronda con la feature garantizada: exactamente lo que recibe quien
+   * compra. `variant` fuerza además la condición del paquete comprado.
+   */
+  function playBonus(rng: Rng, bet: number, variant?: BonusVariant): RoundResult {
     const grid = evaluator.newGrid();
     const stops = new Int32Array(game.reels);
     // Rechazo SOLO sobre el giro base: es idéntico en distribución a rechazar
@@ -237,7 +268,7 @@ export function createRoundEngine(game: SlotGameDef): RoundEngine {
     for (let i = 0; i < 10_000_000; i++) {
       evaluator.spin(game.baseStrips, rng, grid, stops);
       if (evaluator.countScatters(grid) >= game.scattersToTrigger) {
-        return playFrom(rng, bet, grid, stops);
+        return playFrom(rng, bet, grid, stops, variant);
       }
     }
     throw new Error('playBonus: no salió un disparo en 10^7 intentos — revisar las tiras');
