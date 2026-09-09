@@ -60,6 +60,18 @@ export interface SpinRecord {
   /** Giros gratis que otorgó este giro (0 si no disparó ni retriggeó). */
   awarded: number;
   result: SpinEval;
+  /**
+   * Cascadas posteriores a la caída inicial, en juegos de racimos.
+   *
+   * La caída inicial es `grid` + `result`; cada entrada de acá es una
+   * cascada más. El premio del giro es la suma de todas.
+   */
+  tumbles?: readonly {
+    grid: number[];
+    result: SpinEval;
+    multiplier: number;
+    win: number;
+  }[];
 }
 
 export interface RoundResult {
@@ -90,7 +102,11 @@ export interface FastRound {
 
 export interface RoundEngine {
   game: SlotGameDef;
-  evaluator: Evaluator;
+  /**
+   * Evaluador de líneas. Opcional porque un juego de racimos no tiene
+   * líneas que evaluar y su motor no puede fabricar uno de mentira.
+   */
+  evaluator?: Evaluator;
   /** Ronda completa con todo el detalle, para jugar de verdad. */
   play(rng: Rng, bet: number, ante?: boolean): RoundResult;
   /** Ronda sin detalle, para simular. Reusa un único buffer interno. */

@@ -12,7 +12,7 @@
  */
 
 import { Application, Container, FillGradient, Graphics, Sprite, Text } from 'pixi.js';
-import { CryptoRng, SYMBOL_NAMES, PAYING_SYMBOLS } from '@casino/math';
+import { CryptoRng, SYMBOL_NAMES, PAYING_SYMBOLS, TIER_LABELS } from '@casino/math';
 import type { ClimbDto, RgsClient, SpinStep } from '@casino/protocol';
 import { RgsError, RGS_ERRORS } from '@casino/protocol';
 
@@ -22,6 +22,7 @@ import { BridgeRgs, isEmbedded } from './rgs/bridge.ts';
 import { setActiveTheme, PALETTE, TIMING } from './render/theme.ts';
 import { metal, vgrad, rgrad } from './render/material.ts';
 import { ReelSet } from './render/reels.ts';
+import { ClusterBoard } from './render/cluster-board.ts';
 import { WinPresenter } from './render/winlines.ts';
 import { Hud } from './render/hud.ts';
 import { Fx } from './render/fx.ts';
@@ -98,6 +99,12 @@ async function main(): Promise<void> {
   const auth = await rgs.authenticate({ token: 'local', gameId: GAME.id });
   const cfg = auth.config;
 
+  /* Los precios de compra pueden tener decimal —en La Vendimia lo tienen a
+     proposito, ver su tuning.ts— y en castellano el decimal va con coma. Un
+     "56.6x" al lado de un "1.132" se lee como mil quinientos sesenta y seis. */
+  const equis = (v: number): string =>
+    v.toLocaleString('es-AR', { maximumFractionDigits: 1 });
+
   const textures = profile.textures(app);
 
   // ── Escena ───────────────────────────────────────────────────────────────
@@ -118,14 +125,26 @@ async function main(): Promise<void> {
 
   const CELL = profile.cellSize;
   const GAP = 6;
-  const reelSet = new ReelSet({
+
+  /* LA ÚNICA RAMA ESTRUCTURAL DEL CLIENTE.
+     Un juego de racimos no tiene rodillos que giren: tiene celdas que caen,
+     explotan y vuelven a caer. Es otro tablero. Pero expone la MISMA
+     superficie (spinTo, stopNow, setGrid, cellSprite, update), así que a
+     partir de acá el HUD, el sonido, el autoplay, la compra del bonus y la
+     recuperación de ronda son exactamente los mismos para los tres juegos.
+     La otra rama está en playStep, y no hay una tercera. */
+  const esRacimos = profile.cluster === true;
+  const opcionesTablero = {
     reels: cfg.reels,
     rows: cfg.rows,
     cellSize: CELL,
     gap: GAP,
     textures,
     scattersToTrigger: cfg.scattersToTrigger,
-  });
+  };
+  const reelSet: ReelSet | ClusterBoard = esRacimos
+    ? new ClusterBoard(opcionesTablero)
+    : new ReelSet(opcionesTablero);
   board.addChild(reelSet.view);
 
   const wins = new WinPresenter(
@@ -164,9 +183,59 @@ async function main(): Promise<void> {
   freeCounter.visible = false;
   root.addChild(freeCounter);
 
+  /**
+   * El multiplicador de la cascada actual, arriba a la derecha del mueble.
+   *
+   * En un juego de racimos este número ES la jugada: la diferencia entre una
+   * cascada linda y un premio grande es en qué escalón te agarró. Si vive
+   * solo en el contador de premio, el jugador ve subir la plata sin entender
+   * por qué de golpe subió tanto.
+   */
+  const cascadaBadge = new Text({
+    text: '',
+    style: {
+      fontFamily: 'Georgia, serif',
+      fontSize: 26,
+      fontWeight: '700',
+      fill: PALETTE.mult ?? PALETTE.win,
+      letterSpacing: 1,
+    },
+  });
+  cascadaBadge.anchor.set(1, 1);
+  cascadaBadge.visible = false;
+  root.addChild(cascadaBadge);
+
+  /**
+   * Traza de QA: qué pasos se reprodujeron y cuándo.
+   *
+   * Existe porque una jugada de racimos es una CADENA, y cuando algo se
+   * cuelga a la mitad no hay forma de saber en cuál eslabón mirando la
+   * pantalla. Con esto, `__maverick.traza` dice exactamente hasta dónde
+   * llegó —y así apareció el error que rompía el ticker desde el ciclo de
+   * premios—.
+   *
+   * Acotada a propósito: una sesión de autoplay larga son miles de pasos, y
+   * un array que crece sin techo en un juego que corre horas es una fuga de
+   * memoria con buenas intenciones.
+   */
+  const TRAZA_MAX = 200;
+  const traza: { k: string; i: number; c: number; t: number }[] = [];
+
   let freeMode = false;
   /** ¿Este juego tiene Escalinata? Si no, la feature son pegajosos. */
   const hasClimb = cfg.climbTiers.length > 0;
+
+  /* Los símbolos que un juego de racimos USA DE VERDAD.
+     La enumeración del motor tiene once y la comparten los tres juegos, pero
+     La Vendimia solo pone seis en las tiras: con nueve repartidos en treinta
+     celdas ninguno junta cinco pegados. Se deducen de la tabla de pagos —fila
+     en cero es símbolo que no existe— en vez de listarlos a mano, que es la
+     clase de lista que se olvida de actualizar. */
+  const SIMBOLOS_EN_JUEGO = PAYING_SYMBOLS.filter((s) =>
+    (cfg.paytable[s] ?? []).some((v) => v > 0),
+  );
+  const ESCALERA: readonly number[] =
+    (GAME as { cascadeMults?: readonly number[] }).cascadeMults ?? [];
 
   /** Oscurece un color a la mitad, para el aro exterior del marco. */
   function darken(c: number, k = 0.45): number {
@@ -318,6 +387,8 @@ async function main(): Promise<void> {
 
     title.x = boardW / 2;
     title.y = -36;
+    cascadaBadge.x = boardW;
+    cascadaBadge.y = -34;
     freeCounter.x = boardW / 2;
     freeCounter.y = -36;
     footer.x = boardW / 2;
@@ -396,7 +467,21 @@ async function main(): Promise<void> {
 
   hud.setBalance(balance);
   hud.setBet(bet);
-  reelSet.setGrid(new Array(cfg.reels * cfg.rows).fill(0).map((_, i) => (i * 7) % 9 + 2));
+  /* GRILLA DE ARRANQUE: sale de las TIRAS DEL JUEGO, no de una fórmula.
+     Antes era `(i * 7) % 9 + 2`, que reparte los símbolos 2 a 10 en abanico.
+     Con dos juegos que usan los once andaba; en La Vendimia, que solo usa
+     seis, la pantalla de bienvenida se llenaba de los símbolos que este
+     juego no tiene —grises, sin dibujo— y lo primero que ve alguien que
+     entra es una grilla rota. Leyendo la tira propia, cada juego arranca
+     mostrando exactamente lo que va a mostrar jugando. */
+  reelSet.setGrid(
+    Array.from({ length: cfg.reels * cfg.rows }, (_, i) => {
+      const r = Math.floor(i / cfg.rows);
+      const row = i % cfg.rows;
+      const tira = GAME.baseStrips[r]!;
+      return tira[(r * 11 + row * 3) % tira.length]!;
+    }),
+  );
 
   /** Un frame de animación. Separado del ticker para poder avanzarlo a mano. */
   function step(dt: number): void {
@@ -420,8 +505,139 @@ async function main(): Promise<void> {
 
   app.ticker.add((ticker) => step(ticker.deltaMS));
 
+  /**
+   * Los eventos de la caída/giro: sonido de frenada por columna, campanita
+   * de scatter subiendo de tono, y el cartel de expectativa. Son idénticos
+   * en los tres juegos, así que viven en un solo lugar.
+   */
+  function eventosDeCaida(step: SpinStep): {
+    onReelStop: (r: number, ant: boolean) => void;
+    onAnticipation: () => void;
+  } {
+    const conScatter: boolean[] = new Array(cfg.reels).fill(false);
+    for (const cell of step.scatterCells) conScatter[Math.floor(cell / cfg.rows)] = true;
+    let cayeron = 0;
+    return {
+      onReelStop: (r, anticipated) => {
+        audio.reelStop();
+        if (anticipated) {
+          audio.anticipationEnd();
+          hud.hideBanner();
+        }
+        if (conScatter[r]) {
+          cayeron++;
+          audio.scatterHit(cayeron);
+        }
+      },
+      onAnticipation: () => {
+        audio.anticipationStart();
+        hud.showBanner('¡CASI!', hasClimb ? 'un templo más' : esRacimos ? 'una barrica más' : 'un cartucho más');
+      },
+    };
+  }
+
+  /**
+   * Reproduce un paso de un juego de RACIMOS.
+   *
+   * La diferencia con un slot de líneas no es de animación: es de ESTRUCTURA.
+   * Un giro de líneas tiene un resultado y se muestra. Una jugada de racimos
+   * tiene una CADENA —caída, premio, explosión, caída, premio— y cada eslabón
+   * vale más que el anterior porque la escalera del multiplicador subió.
+   *
+   * Todo eso ya vino resuelto del servidor: `step.grid` es la caída inicial y
+   * `step.tumbles` son las cascadas, en orden. Acá no se decide nada, se
+   * averigua qué celda va a dónde para poder animar el movimiento en vez de
+   * reemplazar la grilla de golpe.
+   */
+  async function playPasoRacimos(step: SpinStep, roundBet: number): Promise<void> {
+    const tablero = reelSet as ClusterBoard;
+    traza.push({ k: step.kind, i: step.freeIndex ?? 0, c: (step.tumbles ?? []).length, t: Math.round(simTime) });
+    if (traza.length > TRAZA_MAX) traza.shift();
+    wins.clear();
+    cascadaBadge.visible = false;
+
+    if (step.kind === 'free' && step.freeIndex && step.freeTotal) {
+      setFreeMode(true);
+      freeCounter.text = `GIROS GRATIS ${step.freeIndex}/${step.freeTotal}`;
+    }
+
+    audio.spinStart();
+    const caida = tablero.spinTo(step.grid, eventosDeCaida(step));
+    if (skipRequested) tablero.stopNow();
+    await caida;
+    audio.spinEnd();
+    audio.anticipationEnd();
+    hud.hideBanner();
+
+    if (step.scatterCells.length >= cfg.scattersToTrigger && step.kind === 'base') {
+      audio.freeSpins();
+      fx.shake(8);
+      fx.announce('¡GIROS GRATIS!', `${step.awarded} giros · la escalera no vuelve atrás`, 1100);
+      fx.burst(45);
+      await wait(1300 * tf());
+    }
+
+    /* La cadena completa: la caída inicial es la etapa 0 y cada cascada es
+       una más. La última que manda el servidor no paga nada — es la grilla
+       ya asentada— y está justamente para que la jugada termine de verse. */
+    const etapas: { grid: number[]; wins: typeof step.lineWins; multiplier: number }[] = [
+      { grid: step.grid, wins: step.lineWins, multiplier: step.multiplier },
+      ...(step.tumbles ?? []).map((t) => ({ grid: t.grid, wins: t.wins, multiplier: t.multiplier })),
+    ];
+
+    let acumulado = step.scatterWin;
+    if (step.scatterWin > 0) hud.countTo(acumulado, 260 * tf());
+
+    for (let i = 0; i < etapas.length; i++) {
+      const e = etapas[i]!;
+
+      if (i > 0) {
+        const anteriores = etapas[i - 1]!.wins;
+        const celdas: number[] = [];
+        for (const w of anteriores) for (const c of w.cells) celdas.push(c);
+        // El golpe de la explosión sube de tono con cada cascada: es la
+        // señal más barata de que la escalera está subiendo.
+        audio.scatterHit(Math.min(6, i));
+        if (i >= 4) fx.shake(Math.min(9, i));
+        await tablero.tumbleTo(celdas, e.grid);
+      }
+
+      if (e.wins.length === 0) {
+        cascadaBadge.visible = false;
+        continue;
+      }
+
+      cascadaBadge.text = `×${e.multiplier}`;
+      cascadaBadge.visible = e.multiplier > 1;
+
+      let sub = 0;
+      for (const w of e.wins) sub += w.amount;
+      acumulado += sub;
+
+      wins.show(e.wins);
+      /* Los tiempos de una cascada tienen que ser CORTOS. Una jugada puede
+         tener seis eslabones, y lo que en un slot de líneas es una pausa
+         cómoda, acá multiplicado por seis es una jugada eterna. Solo el
+         premio que vale la pena (>2× la apuesta) se queda un rato más. */
+      const x = sub / roundBet;
+      const dur = Math.min(TIMING.countUp, 150 + x * 45) * tf();
+      hud.countTo(acumulado, dur);
+      audio.countTicks(dur);
+      audio.win(x);
+      const extra = x > 2 ? Math.min(2, x / 12) * 380 : 0;
+      await wait((dur + 90 + extra) * (turbo ? 0.7 : 1));
+      wins.clear();
+    }
+
+    cascadaBadge.visible = false;
+  }
+
   /** Reproduce un paso: gira, frena, muestra premios. */
   async function playStep(step: SpinStep, roundBet: number): Promise<void> {
+    if (esRacimos) {
+      await playPasoRacimos(step, roundBet);
+      return;
+    }
     wins.clear();
 
     if (step.kind === 'free' && step.freeIndex && step.freeTotal) {
@@ -433,30 +649,8 @@ async function main(): Promise<void> {
         : `GIROS GRATIS ${step.freeIndex}/${step.freeTotal} · ×${step.multiplier}`;
     }
 
-    // Precalculamos qué rodillos traen scatter para sonar la campanita justo
-    // cuando cada uno frena, subiendo de tono con cada scatter que cae.
-    const scatterInReel: boolean[] = new Array(cfg.reels).fill(false);
-    for (const cell of step.scatterCells) scatterInReel[Math.floor(cell / cfg.rows)] = true;
-    let scattersLanded = 0;
-
     audio.spinStart();
-    const spun = reelSet.spinTo(step.grid, {
-      onReelStop: (r, anticipated) => {
-        audio.reelStop();
-        if (anticipated) {
-          audio.anticipationEnd();
-          hud.hideBanner();
-        }
-        if (scatterInReel[r]) {
-          scattersLanded++;
-          audio.scatterHit(scattersLanded);
-        }
-      },
-      onAnticipation: () => {
-        audio.anticipationStart();
-        hud.showBanner('¡CASI!', hasClimb ? 'un templo más' : 'un cartucho más');
-      },
-    });
+    const spun = reelSet.spinTo(step.grid, eventosDeCaida(step));
     // Si venimos salteando (fast-forward de la ronda), frenamos ya.
     if (skipRequested) reelSet.stopNow();
     await spun;
@@ -761,7 +955,7 @@ async function main(): Promise<void> {
       c.addChild(precio);
 
       const mult = new Text({
-        text: `${v.priceX}× tu apuesta`,
+        text: `${equis(v.priceX)}× tu apuesta`,
         style: { fontFamily: 'Georgia, serif', fontSize: 10.5, fill: PALETTE.textDim },
       });
       mult.anchor.set(1, 0);
@@ -862,6 +1056,15 @@ async function main(): Promise<void> {
         fx,
         climbScene,
         buy: () => doBuy(),
+        /** Abre el menu de compra (las variantes), sin apostar nada. */
+        menu: () => askBuy(),
+        /* Abre y cierra la tabla de pagos sin depender de un click. Existe
+           para poder revisarla en QA automatizado: si hay que acertarle al
+           boton, la revision depende de donde cayo el layout ese dia. */
+        info: () => {
+          infoModal.visible = !infoModal.visible;
+          return infoModal.visible;
+        },
         spin: () => spin(),
         setBet: (v: number) => {
           bet = v;
@@ -869,6 +1072,9 @@ async function main(): Promise<void> {
         },
         get busy() {
           return busyState.value;
+        },
+        get traza() {
+          return traza;
         },
         /**
          * QA visual de la feature. La feature entra 1 de cada ~209 rondas, así
@@ -880,7 +1086,12 @@ async function main(): Promise<void> {
           // Búsqueda SÍNCRONA contra el motor. Hacerla a través del RGS cuesta
           // un turno del event loop por ronda: 3000 rondas eran ~12 segundos
           // de pantalla congelada. Acá son microsegundos.
-          const engine = createRoundEngine(GAME);
+          //
+          // Y usa el motor DEL PERFIL, no el generico de lineas. Con
+          // `createRoundEngine(GAME)` clavado, en Se Busca la demo mostraba
+          // la feature sin wilds pegajosos y en La Vendimia directamente sin
+          // cascadas: una demo que no muestra la mecanica que se quiere ver.
+          const engine = profile.engine();
           const rng = new CryptoRng();
           const demoBet = BET_LEVELS[0]!;
           for (let i = 0; i < maxTries; i++) {
@@ -960,90 +1171,138 @@ async function main(): Promise<void> {
       return tx;
     };
 
-    t('MAVERICK — TABLA DE PAGOS', boardW / 2, -34, 22, PALETTE.win, 0.5);
-    t('premios en múltiplos de la apuesta por línea (apuesta ÷ 20) · tocá para cerrar', boardW / 2, -4, 11, PALETTE.textDim, 0.5);
+    t(`${cfg.title.toUpperCase()} — TABLA DE PAGOS`, boardW / 2, -34, 22, PALETTE.win, 0.5);
 
-    // Grilla 3×3 de símbolos pagadores con sus pagos.
-    const cellW = (boardW - 8) / 3;
-    PAYING_SYMBOLS.forEach((sym, i) => {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      const x = 4 + col * cellW;
-      const y = 26 + row * 64;
-      const spr = new Sprite(textures.get(sym)!);
-      spr.width = 52;
-      spr.height = 52;
-      spr.position.set(x, y);
-      infoModal.addChild(spr);
-      const pays = cfg.paytable[sym]!;
-      t(SKIN[sym]?.label ?? SYMBOL_NAMES[sym]!, x + 58, y + 8, 13, PALETTE.text);
-      t(`3: ${pays[3]}   4: ${pays[4]}   5: ${pays[5]}`, x + 58, y + 28, 12, PALETTE.textDim);
-    });
+    if (esRacimos) {
+      /* ============================================================
+         LA TABLA DE UN JUEGO DE RACIMOS
 
-    // Especiales y reglas.
-    const rulesY = 26 + 3 * 64 + 6;
-    const wildSpr = new Sprite(textures.get(0)!);
-    wildSpr.width = 44;
-    wildSpr.height = 44;
-    wildSpr.position.set(4, rulesY);
-    infoModal.addChild(wildSpr);
-    const scatterName = hasClimb ? 'Templo' : 'Dinamita';
-    t(`Sustituye a todo menos a la ${scatterName}`, 54, rulesY + 12, 12, PALETTE.textDim);
+         No se parece a la de un juego de líneas y no puede parecerse: no
+         hay "3, 4 o 5 en línea", hay TAMAÑO DE RACIMO. Son cinco columnas
+         de tramos por cada símbolo, y arriba de todo tiene que estar dicha
+         la regla —cinco o más pegados, en cualquier forma— porque es lo
+         único que el jugador no puede deducir mirando la pantalla.
+         ============================================================ */
+      t('premios en múltiplos de la ficha (apuesta ÷ 20)  ·  tocá para cerrar', boardW / 2, -8, 10.5, PALETTE.textDim, 0.5);
+      t('UN RACIMO SON 5 O MÁS SÍMBOLOS IGUALES PEGADOS — arriba, abajo o al costado, en cualquier forma.',
+        boardW / 2, 8, 11.5, PALETTE.scatter, 0.5);
 
-    const scatSpr = new Sprite(textures.get(1)!);
-    scatSpr.width = 44;
-    scatSpr.height = 44;
-    scatSpr.position.set(boardW / 2, rulesY);
-    infoModal.addChild(scatSpr);
-    const scatPays = cfg.scatterPaytable;
-    t(
-      `3/4/5 en cualquier lado: ${scatPays[3]}×/${scatPays[4]}×/${scatPays[5]}× la apuesta · 3+ dan giros gratis`,
-      boardW / 2 + 50,
-      rulesY + 12,
-      11,
-      PALETTE.textDim,
-    );
+      const colX = [boardW - 216, boardW - 162, boardW - 108, boardW - 54, boardW];
+      TIER_LABELS.forEach((lab, k) => t(lab, colX[k]!, 30, 10.5, PALETTE.textDim, 1));
+      t('tamaño del racimo →', 4, 30, 10.5, PALETTE.textDim);
 
-    // La sección de la feature cambia según el juego: escalinata o pegajosos.
-    const featY = rulesY + 54;
-    if (hasClimb) {
-      t('LA ESCALINATA', 4, featY, 15, PALETTE.scatter);
-      const tiersTxt = cfg.climbTiers
-        .map((tt, i) => `N${i + 1}: ${tt.spins}×${tt.multiplier}`)
-        .join('   ');
-      t(tiersTxt, 4, featY + 22, 12.5, PALETTE.text);
-      const oddsTxt = cfg.climbAscendPerMil.map((o) => `${o / 10}%`).join(' → ');
-      t(
-        `Probabilidad de subir cada escalón: ${oddsTxt} · retrigger: 3+ templos = +5 giros`,
-        4, featY + 42, 11, PALETTE.textDim,
-      );
+      SIMBOLOS_EN_JUEGO.forEach((sym, k) => {
+        const y = 46 + k * 34;
+        const spr = new Sprite(textures.get(sym)!);
+        spr.width = 30;
+        spr.height = 30;
+        spr.position.set(2, y);
+        infoModal.addChild(spr);
+        t(SKIN[sym] ?? SYMBOL_NAMES[sym]!, 38, y + 8, 12, PALETTE.text);
+        const fila = cfg.paytable[sym] ?? [];
+        for (let c = 0; c < colX.length; c++) {
+          t(String(fila[c] ?? 0), colX[c]!, y + 8, 12, PALETTE.win, 1);
+        }
+      });
+
+      const reglasY = 46 + SIMBOLOS_EN_JUEGO.length * 34 + 6;
+
+      const wildSpr = new Sprite(textures.get(0)!);
+      wildSpr.width = 34;
+      wildSpr.height = 34;
+      wildSpr.position.set(2, reglasY);
+      infoModal.addChild(wildSpr);
+      t('Sustituye a todo menos a la Barrica, y PEGA racimos.', 40, reglasY + 2, 11.5, PALETTE.text);
+      t('Una misma tijera puede cobrar en dos racimos distintos a la vez.', 40, reglasY + 18, 10.5, PALETTE.textDim);
+
+      const scatSpr = new Sprite(textures.get(1)!);
+      scatSpr.width = 34;
+      scatSpr.height = 34;
+      scatSpr.position.set(2, reglasY + 40);
+      infoModal.addChild(scatSpr);
+      const sp = cfg.scatterPaytable;
+      t(`${cfg.scattersToTrigger}+ barricas en cualquier lado dan giros gratis.`, 40, reglasY + 42, 11.5, PALETTE.text);
+      t(`Además pagan ${sp[4]}× / ${sp[5]}× / ${sp[6]}× la apuesta con 4, 5 y 6.`, 40, reglasY + 58, 10.5, PALETTE.textDim);
+
+      const escY = reglasY + 88;
+      t('CASCADAS Y LA ESCALERA', 4, escY, 14, PALETTE.scatter);
+      t('Lo que gana se va, cae lo de arriba, entra lo nuevo y se vuelve a mirar. Cada cascada',
+        4, escY + 20, 11, PALETTE.text);
+      t('de la misma jugada sube el multiplicador un escalón:', 4, escY + 34, 11, PALETTE.text);
+      t(ESCALERA.map((m) => `×${m}`).join('  →  '), 4, escY + 52, 13, PALETTE.win);
+      t('En los giros gratis la escalera NO vuelve a empezar: sigue donde quedó hasta el final.',
+        4, escY + 72, 11, PALETTE.mult ?? PALETTE.win);
+      t(`Compra del bonus desde ${equis(cfg.bonusBuyX)}× la apuesta` +
+        `  ·  RTP ${(cfg.rtp * 100).toFixed(2)}%` +
+        (cfg.maxWinX ? `  ·  premio máximo ${cfg.maxWinX.toLocaleString('es-AR')}×` : ''),
+        4, escY + 90, 10.5, PALETTE.textDim);
     } else {
-      t('WILDS PEGAJOSOS', 4, featY, 15, PALETTE.scatter);
-      t(
-        'En los giros gratis, cada wild que cae sortea un multiplicador y QUEDA FIJO hasta el final.',
-        4, featY + 22, 12, PALETTE.text,
-      );
-      const multTable = (GAME as { wildMultsFree?: readonly { mult: number; perMil: number }[] })
-        .wildMultsFree ?? [];
-      t(
-        multTable.map((w) => `×${w.mult}: ${(w.perMil / 10).toFixed(1)}%`).join('   '),
-        4, featY + 42, 12, PALETTE.text,
-      );
-      t(
-        'Los multiplicadores de una misma línea SE MULTIPLICAN entre sí (×10 y ×25 = ×250).',
-        4, featY + 62, 11, PALETTE.textDim,
-      );
-    }
+      t('premios en múltiplos de la apuesta por línea (apuesta ÷ 20) · tocá para cerrar', boardW / 2, -4, 11, PALETTE.textDim, 0.5);
 
-    t(
-      `Compra del bonus: ${cfg.bonusBuyX}× la apuesta` +
+      // Grilla 3x3 de simbolos pagadores con sus pagos.
+      const cellW = (boardW - 8) / 3;
+      PAYING_SYMBOLS.forEach((sym, k) => {
+        const col = k % 3;
+        const row = Math.floor(k / 3);
+        const x = 4 + col * cellW;
+        const y = 26 + row * 64;
+        const spr = new Sprite(textures.get(sym)!);
+        spr.width = 52;
+        spr.height = 52;
+        spr.position.set(x, y);
+        infoModal.addChild(spr);
+        const pays = cfg.paytable[sym]!;
+        t(SKIN[sym] ?? SYMBOL_NAMES[sym]!, x + 58, y + 8, 13, PALETTE.text);
+        t(`3: ${pays[3]}   4: ${pays[4]}   5: ${pays[5]}`, x + 58, y + 28, 12, PALETTE.textDim);
+      });
+
+      // Especiales y reglas.
+      const rulesY = 26 + 3 * 64 + 6;
+      const wildSpr = new Sprite(textures.get(0)!);
+      wildSpr.width = 44;
+      wildSpr.height = 44;
+      wildSpr.position.set(4, rulesY);
+      infoModal.addChild(wildSpr);
+      const scatterName = hasClimb ? 'Templo' : 'Dinamita';
+      t(`Sustituye a todo menos a la ${scatterName}`, 54, rulesY + 12, 12, PALETTE.textDim);
+
+      const scatSpr = new Sprite(textures.get(1)!);
+      scatSpr.width = 44;
+      scatSpr.height = 44;
+      scatSpr.position.set(boardW / 2, rulesY);
+      infoModal.addChild(scatSpr);
+      const scatPays = cfg.scatterPaytable;
+      t(`3/4/5 en cualquier lado: ${scatPays[3]}×/${scatPays[4]}×/${scatPays[5]}× la apuesta · 3+ dan giros gratis`,
+        boardW / 2 + 50, rulesY + 12, 11, PALETTE.textDim);
+
+      // La seccion de la feature cambia segun el juego: escalinata o pegajosos.
+      const featY = rulesY + 54;
+      if (hasClimb) {
+        t('LA ESCALINATA', 4, featY, 15, PALETTE.scatter);
+        const tiersTxt = cfg.climbTiers
+          .map((tt, k) => `N${k + 1}: ${tt.spins}×${tt.multiplier}`)
+          .join('   ');
+        t(tiersTxt, 4, featY + 22, 12.5, PALETTE.text);
+        const oddsTxt = cfg.climbAscendPerMil.map((o) => `${o / 10}%`).join(' → ');
+        t(`Probabilidad de subir cada escalón: ${oddsTxt} · retrigger: 3+ templos = +5 giros`,
+          4, featY + 42, 11, PALETTE.textDim);
+      } else {
+        t('WILDS PEGAJOSOS', 4, featY, 15, PALETTE.scatter);
+        t('En los giros gratis, cada wild que cae sortea un multiplicador y QUEDA FIJO hasta el final.',
+          4, featY + 22, 12, PALETTE.text);
+        const multTable = (GAME as { wildMultsFree?: readonly { mult: number; perMil: number }[] })
+          .wildMultsFree ?? [];
+        t(multTable.map((w) => `×${w.mult}: ${(w.perMil / 10).toFixed(1)}%`).join('   '),
+          4, featY + 42, 12, PALETTE.text);
+        t('Los multiplicadores de una misma línea SE MULTIPLICAN entre sí (×10 y ×25 = ×250).',
+          4, featY + 62, 11, PALETTE.textDim);
+      }
+
+      t(`Compra del bonus: ${equis(cfg.bonusBuyX)}× la apuesta` +
         `  ·  RTP del juego ${(cfg.rtp * 100).toFixed(2)}%` +
         (cfg.maxWinX ? `  ·  premio máximo ${cfg.maxWinX.toLocaleString('es-AR')}×` : ''),
-      4,
-      featY + (hasClimb ? 62 : 82),
-      11,
-      PALETTE.textDim,
-    );
+        4, featY + (hasClimb ? 62 : 82), 11, PALETTE.textDim);
+    }
   }
   board.addChild(infoModal);
 

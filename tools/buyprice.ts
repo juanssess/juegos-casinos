@@ -29,7 +29,10 @@ const engine = entry.engine();
 
 const rounds = Math.round(Number(arg('rounds', '1e6')));
 const seed = Number(arg('seed', '4242'));
-const bet = game.paylines.length;
+/* La apuesta de referencia son las FICHAS del juego: la cantidad de líneas
+   en un juego de líneas, y `betDivisor` en uno de racimos, que no tiene. Con
+   `paylines.length` a secas, La Vendimia cotizaba con apuesta cero. */
+const bet = game.paylines.length || game.betDivisor || 20;
 const rng = new Sfc32Rng(seed);
 
 /* Que variante cotizar. Sin --variant se mide la compra simple, que es el

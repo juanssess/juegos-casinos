@@ -83,6 +83,14 @@ export interface LineWin {
   mult?: number;
   /** Premio en créditos (ya multiplicado por lineBet y el multiplicador activo). */
   amount: number;
+  /**
+   * Celdas que forman el premio (`reel * rows + row`).
+   *
+   * En un juego de líneas se deducen de la línea y el conteo, así que van
+   * vacías. En uno de RACIMOS no hay forma de deducirlas —el premio es un
+   * grupo conectado de forma arbitraria— y tienen que viajar con el premio.
+   */
+  cells?: readonly number[];
 }
 
 /** Resultado de evaluar UNA ventana (un giro). */
@@ -177,6 +185,19 @@ export interface SlotGameDef {
   climb?: ClimbDef;
   /** Tope de giros gratis acumulados (evita colas infinitas en la simulación). */
   maxFreeSpins: number;
+
+  /**
+   * En cuántas fichas se divide la apuesta total.
+   *
+   * En un juego de líneas esto ES la cantidad de líneas: apostás 20 créditos
+   * repartidos en 20 líneas y cada premio se cobra sobre una. Un juego de
+   * RACIMOS no tiene líneas, pero necesita la misma unidad para que los
+   * premios chicos no sean fracciones de crédito: la apuesta se sigue
+   * dividiendo en fichas y la tabla paga en múltiplos de ficha.
+   *
+   * Ausente = se usa `paylines.length`.
+   */
+  betDivisor?: number;
 
   /**
    * APUESTA ANTE — pagar más por más chance de bonus.

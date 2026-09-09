@@ -102,11 +102,13 @@ function classifyVolatility(vi: number): string {
 
 export function simulate(game: SlotGameDef, opts: SimOptions): SimReport {
   const rounds = opts.rounds;
-  const bet = opts.bet ?? game.paylines.length;
-  if (bet % game.paylines.length !== 0) {
-    throw new Error(
-      `La apuesta (${bet}) debe ser múltiplo de la cantidad de líneas (${game.paylines.length})`,
-    );
+  /* La apuesta se divide en FICHAS. En un juego de líneas hay una ficha por
+     línea; en uno de racimos no hay líneas y el divisor lo declara el juego.
+     Sin esta distinción, `bet % 0` da NaN y el juego de racimos no arranca. */
+  const units = game.paylines.length || game.betDivisor || 1;
+  const bet = opts.bet ?? units;
+  if (units > 1 && bet % units !== 0) {
+    throw new Error(`La apuesta (${bet}) debe ser múltiplo de ${units} fichas`);
   }
 
   const rng = opts.rng ?? new Sfc32Rng(opts.seed ?? 0x1234abcd);

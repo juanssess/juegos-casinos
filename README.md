@@ -17,6 +17,7 @@ packages/math/              motor genérico — RNG, evaluador, simulador, tuner
 packages/protocol/          contrato del RGS (solo tipos, sin dependencias)
 packages/games/classic20/   juego #1: 5×3, 20 líneas, Escalinata
 packages/games/sebusca/     juego #2: 5×5, 15 líneas, pegajosos multiplicadores
+packages/games/vendimia/    juego #3: 6×5, RACIMOS con cascadas, sin líneas
 apps/client/                cliente PixiJS único, multi-juego
 tools/sim.ts                simulador Monte Carlo
 tools/tune.ts               resuelve la paytable para un RTP objetivo
@@ -27,6 +28,12 @@ docs/                       math sheets
 Un juego con mecánica propia (como los pegajosos de Se Busca) trae su propio
 motor implementando `RoundEngine`; el simulador, el tuner y el RGS lo consumen
 sin enterarse de la mecánica.
+
+Los juegos de RACIMOS (La Vendimia) van un paso más allá: no tienen líneas, no
+pagan por línea y su tabla se indexa por tamaño de grupo. Por eso el motor
+genérico trae `cluster.ts` (evaluador y tiras), `cluster-round.ts` (motor de
+cascadas) y `cluster-tune.ts` (medición y solver), y `tools/tune.ts` elige el
+camino según el `kind` de la entrada en `tools/games.ts`.
 
 `packages/math` no conoce gráficos, ni red, ni tema. Son funciones puras más un
 RNG inyectable. Eso es lo que permite correr 200 millones de rondas en dos

@@ -37,6 +37,7 @@ import {
   type SpinRequest,
   type SpinResponse,
   type SpinStep,
+  type TumbleDto,
 } from '@casino/protocol';
 
 // Una billetera por juego: mezclar el estado de dos juegos distintos en la
@@ -54,30 +55,57 @@ const storageKey = (gameId: string) => `rgs.v1.${gameId}`;
 export function roundToSteps(game: SlotGameDef, result: RoundResult): SpinStep[] {
   const { reels, rows, paylines } = game;
 
-  const toStep = (rec: SpinRecord, kind: 'base' | 'free'): SpinStep => {
-    const lineWins: LineWinDto[] = rec.result.lineWins.map((w) => {
-      const line = paylines[w.line]!;
-      const cells: number[] = [];
-      for (let r = 0; r < w.count && r < reels; r++) cells.push(r * rows + line[r]!);
-      return { line: w.line, symbol: w.symbol, count: w.count, amount: w.amount, cells };
-    });
+  /* Las celdas de un premio pueden venir DADAS o deducirse.
+     En un juego de líneas se deducen: la línea y el conteo dicen exactamente
+     qué celdas. En uno de racimos no hay nada que deducir —el grupo tiene
+     forma libre— así que vienen con el premio. Un solo camino que acepta las
+     dos formas evita tener dos conversiones que tarde o temprano se separan. */
+  const celdasDe = (w: { line: number; count: number; cells?: readonly number[] }): number[] => {
+    if (w.cells) return [...w.cells];
+    const line = paylines[w.line]!;
+    const out: number[] = [];
+    for (let r = 0; r < w.count && r < reels; r++) out.push(r * rows + line[r]!);
+    return out;
+  };
 
+  const premios = (rec: { lineWins: readonly { line: number; symbol: number; count: number; amount: number; cells?: readonly number[] }[] }): LineWinDto[] =>
+    rec.lineWins.map((w) => ({
+      line: w.line,
+      symbol: w.symbol,
+      count: w.count,
+      amount: w.amount,
+      cells: celdasDe(w),
+    }));
+
+  const toStep = (rec: SpinRecord, kind: 'base' | 'free'): SpinStep => {
     const scatterCells: number[] = [];
     for (let i = 0; i < rec.grid.length; i++) {
       if (rec.grid[i] === SYM.SCATTER) scatterCells.push(i);
     }
+
+    const tumbles: TumbleDto[] = (rec.tumbles ?? []).map((t) => ({
+      grid: t.grid,
+      wins: premios(t.result),
+      multiplier: t.multiplier,
+      win: t.win,
+    }));
+
+    // El premio del paso es la caída inicial MÁS todas sus cascadas.
+    let win = rec.result.totalWin;
+    for (const t of tumbles) win += t.win;
 
     return {
       kind,
       grid: rec.grid,
       stops: rec.stops,
       ...(rec.mults ? { mults: rec.mults } : {}),
-      lineWins,
+      lineWins: premios(rec.result),
       scatterCells,
       scatterWin: rec.result.scatterWin,
       multiplier: rec.multiplier,
       awarded: rec.awarded,
-      win: rec.result.totalWin,
+      win,
+      ...(tumbles.length ? { tumbles } : {}),
     };
   };
 

@@ -3,5 +3,8 @@ export * from './rng.ts';
 export * from './reels.ts';
 export * from './evaluate.ts';
 export * from './round.ts';
+export * from './cluster.ts';
+export * from './cluster-round.ts';
+export * from './cluster-tune.ts';
 export * from './simulate.ts';
 export * from './tune.ts';

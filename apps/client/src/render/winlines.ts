@@ -10,7 +10,19 @@
 import { Container, Graphics, Sprite } from 'pixi.js';
 import { PALETTE } from './theme.ts';
 import type { LineWinDto } from '@casino/protocol';
-import type { ReelSet } from './reels.ts';
+
+/**
+ * Lo UNICO que el presentador necesita de un tablero: poder pedirle el
+ * sprite de una celda.
+ *
+ * Antes pedia un `ReelSet` entero, y eso lo ataba a los juegos de rodillos.
+ * El tablero de racimos no es un ReelSet y sin embargo resalta los premios
+ * exactamente igual —celdas encendidas, el resto atenuado, latido— porque el
+ * resaltado no tiene nada que ver con como llegaron los simbolos ahi.
+ */
+export interface TableroDeCeldas {
+  cellSprite(reel: number, row: number): Sprite;
+}
 
 export interface WinPresenterOptions {
   reels: number;
@@ -24,7 +36,7 @@ export class WinPresenter {
   readonly view = new Container();
   #g = new Graphics();
   #o: WinPresenterOptions;
-  #reelSet: ReelSet;
+  #reelSet: TableroDeCeldas;
   #wins: LineWinDto[] = [];
   #current = -1;
   #t = 0;
@@ -33,7 +45,7 @@ export class WinPresenter {
   #cycleMs: number;
   #active = false;
 
-  constructor(reelSet: ReelSet, opts: WinPresenterOptions, cycleMs: number) {
+  constructor(reelSet: TableroDeCeldas, opts: WinPresenterOptions, cycleMs: number) {
     this.#reelSet = reelSet;
     this.#o = opts;
     this.#cycleMs = cycleMs;
@@ -122,8 +134,16 @@ export class WinPresenter {
         .stroke({ width: 6, color: PALETTE.win, alpha: 0.14 });
     }
 
-    if (drawLine && win) {
-      const line = paylines[win.line]!;
+    /* EL CAMINO SOLO EXISTE SI HAY LINEA.
+       En un juego de racimos el premio es un grupo de forma libre: viaja con
+       `line: -1` justamente porque no hay recorrido que dibujar, y las celdas
+       ya cuentan toda la historia. Sin esta guarda, `paylines[-1]` era
+       `undefined` y el ciclo de premios reventaba con un TypeError... adentro
+       del ticker, que es el peor lugar posible: la excepcion cortaba el bucle
+       de animacion y el juego quedaba congelado a mitad de una jugada, sin
+       ningun error visible en pantalla. */
+    const line = drawLine && win && win.line >= 0 ? paylines[win.line] : undefined;
+    if (line && win) {
       const pts: number[] = [];
       for (let r = 0; r < win.count && r < line.length; r++) {
         pts.push(r * (cellSize + gap) + cellSize / 2, line[r]! * cellSize + cellSize / 2);

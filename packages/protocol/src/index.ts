@@ -116,6 +116,23 @@ export interface LineWinDto {
 }
 
 /**
+ * Una CASCADA dentro de un paso, en los juegos de racimos.
+ *
+ * El paso trae la caída inicial (`grid` + `lineWins`); cada entrada de acá
+ * es lo que quedó después de que explotara lo anterior. El cliente las
+ * reproduce en orden y no decide ninguna: cuáles se forman ya vino resuelto.
+ */
+export interface TumbleDto {
+  /** La grilla YA caída y rellenada. */
+  grid: number[];
+  /** Racimos que ganaron sobre esta grilla. */
+  wins: LineWinDto[];
+  /** Multiplicador de esta cascada (la escalera ×1, ×2, ×3, ×5...). */
+  multiplier: number;
+  win: Credits;
+}
+
+/**
  * Un giro dentro de la ronda: el base o uno de los gratis.
  * El cliente reproduce estos pasos en orden.
  */
@@ -141,6 +158,14 @@ export interface SpinStep {
   /** Índice del giro gratis y total, para el cartel "3 de 12". */
   freeIndex?: number;
   freeTotal?: number;
+  /**
+   * Cascadas posteriores a la caída inicial. Solo en juegos de racimos.
+   *
+   * `win` del paso incluye TODAS las cascadas: es lo que se ganó en esa
+   * jugada de punta a punta. El cliente lo va acreditando de a poco, pero el
+   * número que manda es el del paso.
+   */
+  tumbles?: TumbleDto[];
 }
 
 export interface RoundState {
