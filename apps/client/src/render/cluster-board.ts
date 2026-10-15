@@ -32,7 +32,7 @@
  * abajo llega primero, porque es la que menos tiene que recorrer.
  */
 
-import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import { SYM, type SymbolId } from '@casino/math';
 import { PALETTE, TIMING } from './theme.ts';
 import type { SymbolTextures } from './symbols.ts';
@@ -50,6 +50,19 @@ export interface ClusterBoardOptions {
   gap: number;
   textures: SymbolTextures;
   scattersToTrigger: number;
+  /**
+   * Solo los juegos con BOMBAS (El Kiosco): color de la etiqueta según el
+   * valor. Si está, cada celda lleva una etiqueta que viaja con su sprite.
+   */
+  valueColor?: (v: number) => number;
+}
+
+/** La etiqueta de valor de una celda: el "×25" encima de la bomba. */
+interface ValueBadge {
+  view: Container;
+  face: Graphics;
+  label: Text;
+  value: number;
 }
 
 type AnimKind = 'fall' | 'pop';
@@ -99,6 +112,19 @@ export class ClusterBoard {
   /** Tiempo en el que cada columna termina de caer, para el aviso de frenada. */
   #colDone: number[] = [];
   #anticipating: boolean[] = [];
+  /**
+   * LAS ETIQUETAS DE LAS BOMBAS VIAJAN CON EL SPRITE, no con la celda.
+   *
+   * La bomba no se va con la cascada: baja con su columna. Si la etiqueta
+   * fuera de la celda, en cada cascada quedaría un "×25" flotando en el
+   * lugar donde ESTABA la bomba mientras la bomba cae sin número. Atada al
+   * sprite, cae con él, explota con él y se recicla con él.
+   */
+  #badges = new Map<Sprite, ValueBadge>();
+  /** Capa de etiquetas por columna, siempre encima de los sprites. */
+  #badgeLayers: Container[] = [];
+  /** Latido de "las bombas están por multiplicar" (ms restantes). */
+  #pulse = 0;
 
   constructor(opts: ClusterBoardOptions) {
     this.#o = opts;
@@ -142,6 +168,13 @@ export class ClusterBoard {
       for (let row = 0; row < rows; row++) fantasmas.push(nuevo(row, false));
       for (let row = 0; row < rows; row++) list.push(nuevo(row, true));
 
+      if (opts.valueColor) {
+        const layer = new Container();
+        col.addChild(layer);
+        this.#badgeLayers.push(layer);
+        for (const s of [...fantasmas, ...list]) this.#badges.set(s, this.#newBadge(layer));
+      }
+
       this.#cells.push(list);
       this.#ghosts.push(fantasmas);
       this.#cols.push(col);
@@ -151,6 +184,89 @@ export class ClusterBoard {
       this.#anticipating.push(false);
       this.view.addChild(col);
     }
+  }
+
+  #newBadge(layer: Container): ValueBadge {
+    const view = new Container();
+    const face = new Graphics();
+    const label = new Text({
+      text: '',
+      style: {
+        fontFamily: 'Georgia, "Times New Roman", serif',
+        fontSize: Math.round(this.#o.cellSize * 0.27),
+        fontWeight: '700',
+        fill: 0xffffff,
+        stroke: { color: 0x1a0606, width: 4 },
+      },
+    });
+    label.anchor.set(0.5);
+    view.addChild(face, label);
+    view.visible = false;
+    layer.addChild(view);
+    return { view, face, label, value: 0 };
+  }
+
+  /** Pone (o saca, con 0) el valor que lleva un sprite. */
+  #setValue(s: Sprite, v: number): void {
+    const b = this.#badges.get(s);
+    if (!b) return;
+    if (b.value === v) return;
+    b.value = v;
+    b.view.visible = v > 0;
+    if (v <= 0) return;
+    const color = this.#o.valueColor!(v);
+    const cs = this.#o.cellSize;
+    b.label.text = `×${v}`;
+    b.label.style.fill = color;
+    b.label.style.fontSize = Math.round(cs * (v >= 100 ? 0.23 : 0.27));
+    const w = b.label.width + cs * 0.14;
+    const h = cs * 0.3;
+    b.face.clear()
+      .roundRect(-w / 2, -h / 2, w, h, h / 2)
+      .fill({ color: 0x140606, alpha: 0.78 })
+      .roundRect(-w / 2, -h / 2, w, h, h / 2)
+      .stroke({ width: 2, color, alpha: 0.95 });
+  }
+
+  /** Los valores de una grilla, o todo en cero si el paso no trae. */
+  #valueAt(values: readonly number[] | undefined, i: number): number {
+    return values ? values[i] ?? 0 : 0;
+  }
+
+  /** Suma de las bombas que hay en pantalla ahora mismo. */
+  get valueSum(): number {
+    let sum = 0;
+    for (const col of this.#cells) for (const s of col) sum += this.#badges.get(s)?.value ?? 0;
+    return sum;
+  }
+
+  /**
+   * El latido de las bombas antes de multiplicar. Es el momento de la
+   * jugada —"¿cuánto suman?"— y merece que todas se muevan juntas.
+   */
+  pulseValues(ms = 700): void {
+    this.#pulse = ms;
+  }
+
+  /** Cada etiqueta sigue a su sprite: posición, tamaño y transparencia. */
+  #syncBadges(dtMs: number): void {
+    if (this.#badges.size === 0) return;
+    if (this.#pulse > 0) this.#pulse = Math.max(0, this.#pulse - dtMs);
+    const cs = this.#o.cellSize;
+    const latido = this.#pulse > 0 ? 1 + 0.28 * Math.sin((this.#pulse / 700) * Math.PI) : 1;
+    for (const [s, b] of this.#badges) {
+      if (!b.view.visible) continue;
+      b.view.x = s.x;
+      b.view.y = s.y + cs * 0.06;
+      b.view.scale.set((s.width / cs) * latido);
+      b.view.alpha = s.alpha;
+    }
+  }
+
+  /** Las etiquetas arriba de todo, después de reordenar los sprites. */
+  #badgesOnTop(r: number): void {
+    const layer = this.#badgeLayers[r];
+    if (layer) this.#cols[r]!.addChild(layer);
   }
 
   get running(): boolean {
@@ -176,21 +292,24 @@ export class ClusterBoard {
   }
 
   /** Pinta la grilla sin animación (arranque y recuperación de ronda). */
-  setGrid(grid: readonly number[]): void {
+  setGrid(grid: readonly number[], values?: readonly number[]): void {
     const { reels, rows, cellSize } = this.#o;
     this.#anims.length = 0;
     for (let r = 0; r < reels; r++) {
       for (let row = 0; row < rows; row++) {
         const s = this.#cells[r]![row]!;
         s.texture = this.#tex(grid[r * rows + row]!);
+        this.#setValue(s, this.#valueAt(values, r * rows + row));
         s.y = this.#restY(row);
         s.alpha = 1;
         s.width = cellSize;
         s.height = cellSize;
         // Los del otro juego se estacionan bien arriba, fuera de la mascara.
         this.#ghosts[r]![row]!.y = -cellSize * 4;
+        this.#setValue(this.#ghosts[r]![row]!, 0);
       }
     }
+    this.#syncBadges(0);
   }
 
   /**
@@ -203,7 +322,7 @@ export class ClusterBoard {
    * probablemente el detalle que más separa un juego que engancha de uno que
    * solo funciona.
    */
-  spinTo(grid: readonly number[], events?: SpinEvents): Promise<void> {
+  spinTo(grid: readonly number[], events?: SpinEvents, values?: readonly number[]): Promise<void> {
     const { reels, rows, cellSize, scattersToTrigger } = this.#o;
     const f = this.#f();
     this.#anims.length = 0;
@@ -265,6 +384,7 @@ export class ClusterBoard {
 
         const entra = entran[row]!;
         entra.texture = this.#tex(grid[r * rows + row]!);
+        this.#setValue(entra, this.#valueAt(values, r * rows + row));
         entra.alpha = 1;
         entra.width = cellSize;
         entra.height = cellSize;
@@ -276,6 +396,7 @@ export class ClusterBoard {
       }
 
       for (const sp of entran) this.#cols[r]!.addChild(sp);
+      this.#badgesOnTop(r);
       this.#cells[r] = entran;
       this.#ghosts[r] = viejos;
 
@@ -294,7 +415,7 @@ export class ClusterBoard {
    * solo averigua QUÉ SPRITE va a dónde para poder animar el movimiento en
    * vez de reemplazar la grilla de golpe.
    */
-  tumbleTo(remove: readonly number[], grid: readonly number[]): Promise<void> {
+  tumbleTo(remove: readonly number[], grid: readonly number[], values?: readonly number[]): Promise<void> {
     const { reels, rows, cellSize } = this.#o;
     const f = this.#f();
     this.#anims.length = 0;
@@ -333,6 +454,7 @@ export class ClusterBoard {
         const s = orden[row]!;
         const esNuevo = row < nuevos.length;
         s.texture = this.#tex(grid[r * rows + row]!);
+        this.#setValue(s, this.#valueAt(values, r * rows + row));
         const destino = this.#restY(row);
 
         /* Todo lo que se mueve en esta columna recorre EXACTAMENTE lo mismo
@@ -370,6 +492,7 @@ export class ClusterBoard {
       // Reordenamos también en la escena para que la profundidad acompañe:
       // los nuevos entran DETRÁS, así se ven aparecer desde el fondo.
       for (const s of orden) this.#cols[r]!.addChild(s);
+      this.#badgesOnTop(r);
     }
 
     if (this.#anims.length === 0) {
@@ -395,7 +518,10 @@ export class ClusterBoard {
   }
 
   update(dtMs: number): void {
-    if (!this.#running) return;
+    if (!this.#running) {
+      this.#syncBadges(dtMs);
+      return;
+    }
     this.#elapsed += dtMs;
     const { cellSize } = this.#o;
     let vivos = 0;
@@ -459,6 +585,10 @@ export class ClusterBoard {
         this.#events?.onReelStop?.(r, this.#anticipating[r]!);
       }
     }
+
+    // Las etiquetas se acomodan DESPUÉS de mover los sprites: si no, van
+    // un cuadro atrasadas y en una caída rápida se ven despegadas.
+    this.#syncBadges(dtMs);
 
     if (vivos === 0) {
       this.#running = false;

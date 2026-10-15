@@ -98,6 +98,37 @@ export interface ClusterGameDef extends SlotGameDef {
   freeCarriesLadder: boolean;
   /** Tope de premio por ronda, en múltiplos de la apuesta. */
   maxWinX: number;
+
+  /**
+   * Cómo se arma un premio.
+   *  - `connected` (default): racimos pegados, con wild que sustituye.
+   *  - `anywhere`: "scatter pays" — cuenta TODAS las celdas de un símbolo en
+   *    la grilla, estén donde estén. No hay wild; el slot `SYM.WILD` queda
+   *    libre y lo usa la BOMBA multiplicadora (ver `bombValues`).
+   */
+  payMode?: 'connected' | 'anywhere';
+  /** Mínimo de celdas para pagar. Default `MIN_CLUSTER`. */
+  minSize?: number;
+  /** Tramos de la tabla de pagos. Default `CLUSTER_TIERS`. */
+  tiers?: readonly (readonly [number, number])[];
+  /** Etiquetas de los tramos, para reportes y la tabla del cliente. */
+  tierLabels?: readonly string[];
+  /** Scatters para sumar giros DENTRO de la feature. Default `scattersToTrigger`. */
+  scattersToRetrigger?: number;
+  /**
+   * Valor de cada bomba multiplicadora, alineado con `freeStrips`:
+   * `bombValues[columna][posición]` es el multiplicador de la bomba que está
+   * en esa posición de la tira (0 si ahí no hay bomba).
+   *
+   * El valor viaja CON LA TIRA en vez de sortearse al caer, y es a propósito:
+   * mantiene la propiedad que hace auditable a todo este motor —la jugada
+   * entera sale de las paradas, sin un solo sorteo más—. La distribución de
+   * valores se controla con cuántas bombas de cada valor hay en las tiras.
+   *
+   * Solo en modo `anywhere`. Las bombas no pagan, no se van con las cascadas
+   * y al terminar la secuencia multiplican su premio por la SUMA de todas.
+   */
+  bombValues?: readonly (readonly number[])[];
 }
 
 /** Un racimo ganador. */
@@ -115,12 +146,26 @@ export interface TumbleRecord {
   result: SpinEval;
   multiplier: number;
   win: number;
+  /** Valor de las bombas por celda en esta grilla (solo juegos con bombas). */
+  mults?: number[];
+}
+
+/**
+ * Valores por celda que viajan con la grilla (las bombas). `strips` son los
+ * valores alineados con las tiras de símbolos; `cells` es el estado actual.
+ */
+export interface CellValues {
+  strips: readonly (readonly number[])[];
+  cells: Int32Array;
 }
 
 export interface ClusterEvaluator {
   newGrid(): Grid;
   /** Caída inicial: sortea una parada por columna y llena la ventana. */
-  drop(strips: ReelStrips, rng: Rng, out: Grid, stops: Int32Array, feed: Int32Array): void;
+  drop(
+    strips: ReelStrips, rng: Rng, out: Grid, stops: Int32Array, feed: Int32Array,
+    values?: CellValues | null,
+  ): void;
   /** Racimos de la grilla. Reusa buffers internos: consumir antes de volver a llamar. */
   clusters(grid: Grid): readonly Cluster[];
   countScatters(grid: Grid): number;
@@ -128,7 +173,10 @@ export interface ClusterEvaluator {
    * Saca las celdas marcadas, deja caer lo que queda y rellena desde arriba
    * con la tira. Modifica `grid` y avanza `feed`.
    */
-  tumble(grid: Grid, remove: Uint8Array, strips: ReelStrips, feed: Int32Array): void;
+  tumble(
+    grid: Grid, remove: Uint8Array, strips: ReelStrips, feed: Int32Array,
+    values?: CellValues | null,
+  ): void;
   /** Premio de un racimo, en múltiplos de la ficha. */
   payOf(symbol: SymbolId, size: number): number;
   /** Índice del tramo al que cae un tamaño (−1 si no paga). */
@@ -138,7 +186,9 @@ export interface ClusterEvaluator {
 export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
   const { reels, rows } = game;
   const cells = reels * rows;
-  const tiers = CLUSTER_TIERS;
+  const tiers = game.tiers ?? CLUSTER_TIERS;
+  const minSize = game.minSize ?? MIN_CLUSTER;
+  const anywhere = game.payMode === 'anywhere';
 
   // Tabla de vecinos precalculada. Recalcular los cuatro vecinos con ifs
   // dentro del BFS es el costo dominante cuando esto corre 10^8 veces.
@@ -158,7 +208,7 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
 
   /** Tamaño → tramo, resuelto una vez. */
   const tierBySize = new Int8Array(cells + 1).fill(-1);
-  for (let s = MIN_CLUSTER; s <= cells; s++) {
+  for (let s = minSize; s <= cells; s++) {
     for (let t = 0; t < tiers.length; t++) {
       if (s >= tiers[t]![0] && s <= tiers[t]![1]) {
         tierBySize[s] = t;
@@ -181,7 +231,27 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
   let stamp = 0;
   const found: Cluster[] = [];
 
+  // Modo `anywhere`: celdas por símbolo, sin BFS.
+  const bySym: number[][] = Array.from({ length: game.paytable.length }, () => []);
+
+  function anywhereGroups(grid: Grid): readonly Cluster[] {
+    found.length = 0;
+    for (const list of bySym) list.length = 0;
+    for (let i = 0; i < cells; i++) {
+      const sym = grid[i]!;
+      // La bomba (slot del wild) y el scatter no forman premio.
+      if (sym === SYM.WILD || sym === SYM.SCATTER) continue;
+      bySym[sym]?.push(i);
+    }
+    for (let sym = 0; sym < bySym.length; sym++) {
+      const list = bySym[sym]!;
+      if (list.length >= minSize) found.push({ symbol: sym, size: list.length, cells: list.slice() });
+    }
+    return found;
+  }
+
   function clusters(grid: Grid): readonly Cluster[] {
+    if (anywhere) return anywhereGroups(grid);
     found.length = 0;
     done.fill(0);
 
@@ -217,7 +287,7 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
         }
       }
 
-      if (group.length >= MIN_CLUSTER) {
+      if (group.length >= minSize) {
         found.push({ symbol: sym, size: group.length, cells: group });
       }
     }
@@ -230,7 +300,10 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
     return n;
   }
 
-  function drop(strips: ReelStrips, rng: Rng, out: Grid, stops: Int32Array, feed: Int32Array): void {
+  function drop(
+    strips: ReelStrips, rng: Rng, out: Grid, stops: Int32Array, feed: Int32Array,
+    values?: CellValues | null,
+  ): void {
     for (let r = 0; r < reels; r++) {
       const strip = strips[r]!;
       const len = strip.length;
@@ -238,6 +311,10 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
       stops[r] = stop;
       const base = r * rows;
       for (let row = 0; row < rows; row++) out[base + row] = strip[(stop + row) % len]!;
+      if (values) {
+        const vs = values.strips[r]!;
+        for (let row = 0; row < rows; row++) values.cells[base + row] = vs[(stop + row) % len]!;
+      }
       // Lo próximo que caiga en esta columna es lo que estaba justo arriba
       // de la parada. Desde acá se camina la tira hacia atrás.
       feed[r] = (stop - 1 + len) % len;
@@ -245,15 +322,23 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
   }
 
   const column = new Int8Array(rows);
+  const colVals = new Int32Array(rows);
 
-  function tumble(grid: Grid, remove: Uint8Array, strips: ReelStrips, feed: Int32Array): void {
+  function tumble(
+    grid: Grid, remove: Uint8Array, strips: ReelStrips, feed: Int32Array,
+    values?: CellValues | null,
+  ): void {
     for (let r = 0; r < reels; r++) {
       const base = r * rows;
 
-      // Compactamos hacia abajo lo que sobrevive.
+      // Compactamos hacia abajo lo que sobrevive. Los valores (bombas) bajan
+      // pegados a su celda.
       let write = rows - 1;
       for (let row = rows - 1; row >= 0; row--) {
-        if (!remove[base + row]) column[write--] = grid[base + row]!;
+        if (!remove[base + row]) {
+          if (values) colVals[write] = values.cells[base + row]!;
+          column[write--] = grid[base + row]!;
+        }
       }
 
       const nuevos = write + 1;
@@ -262,15 +347,18 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
       // Y llenamos los huecos de arriba. El primero que entra es el que
       // estaba más cerca, y por eso cae MÁS ABAJO de los nuevos.
       const strip = strips[r]!;
+      const vs = values ? values.strips[r]! : null;
       const len = strip.length;
       let f = feed[r]!;
       for (let row = nuevos - 1; row >= 0; row--) {
         column[row] = strip[f]!;
+        if (vs) colVals[row] = vs[f]!;
         f = (f - 1 + len) % len;
       }
       feed[r] = f;
 
       for (let row = 0; row < rows; row++) grid[base + row] = column[row]!;
+      if (values) for (let row = 0; row < rows; row++) values.cells[base + row] = colVals[row]!;
     }
   }
 

@@ -71,7 +71,16 @@ export interface SpinRecord {
     result: SpinEval;
     multiplier: number;
     win: number;
+    /** Valor de las bombas en cada celda de esta grilla (0 = no hay). */
+    mults?: number[];
   }[];
+  /**
+   * Bombas multiplicadoras: suma de todas las que quedaron al final de la
+   * secuencia, y lo que agregaron al premio (premio × (suma − 1)). Solo
+   * presente cuando hubo premio y bombas.
+   */
+  bombMult?: number;
+  bombWin?: number;
 }
 
 export interface RoundResult {

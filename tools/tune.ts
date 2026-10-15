@@ -61,7 +61,7 @@ if (entry.kind === 'cluster') {
   );
 
   console.log('Paytable resuelta (múltiplos de la ficha = apuesta ÷ ' + (g.betDivisor ?? 20) + ')');
-  console.log('  símbolo   ' + TIER_LABELS.map((l) => l.padStart(8)).join('') + '      aporta');
+  console.log('  símbolo   ' + (g.tierLabels ?? TIER_LABELS).map((l) => l.padStart(8)).join('') + '      aporta');
   for (const sym of PAYING_SYMBOLS) {
     const row = solved.paytable[sym];
     if (!row || row.every((v) => v === 0)) continue;
@@ -72,7 +72,7 @@ if (entry.kind === 'cluster') {
         `     ${(c.total * 100).toFixed(2)}%`,
     );
   }
-  console.log(`  ${'SCATTER'.padEnd(9)}${'—'.padStart(8 * TIER_LABELS.length)}     ${(after.scatter * 100).toFixed(2)}%`);
+  console.log(`  ${'SCATTER'.padEnd(9)}${'—'.padStart(8 * (g.tierLabels ?? TIER_LABELS).length)}     ${(after.scatter * 100).toFixed(2)}%`);
 
   console.log(
     `\n  base ${((after.base + after.scatter) * 100).toFixed(2)}%  ·  ` +
@@ -80,7 +80,7 @@ if (entry.kind === 'cluster') {
       `la feature aporta el ${((after.feature / after.total) * 100).toFixed(1)}% del RTP`,
   );
 
-  const problems = validateClusterPaytable(solved.paytable);
+  const problems = validateClusterPaytable(solved.paytable, undefined, g.tierLabels ?? TIER_LABELS);
   if (problems.length === 0) {
     console.log('\n✓ La tabla es monótona: se lee bien de arriba a abajo.');
   } else {

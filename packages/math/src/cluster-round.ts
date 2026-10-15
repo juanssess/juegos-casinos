@@ -37,6 +37,17 @@
  *
  * Nada más. `measure.ts` de cada juego de racimos consume exactamente esto,
  * y el test de consistencia compara ambos lados con la misma semilla.
+ *
+ * ---------------------------------------------------------------------
+ * BOMBAS MULTIPLICADORAS (juegos `anywhere` con `bombValues`)
+ * ---------------------------------------------------------------------
+ * En los giros gratis pueden caer bombas. No pagan ni se van con las
+ * cascadas: se quedan hasta el final de la secuencia. Ahí, si la secuencia
+ * ganó algo, el premio se multiplica por la SUMA de todas las bombas que hay
+ * en la grilla. Como nunca se van, la grilla final las tiene a todas.
+ *
+ * El valor de cada bomba viene de la tira (ver `bombValues`), así que esto
+ * NO agrega sorteos: el contrato de arriba sigue intacto.
  */
 
 import type { BonusVariant, Grid, ReelStrips, SpinEval } from './types.ts';
@@ -45,6 +56,7 @@ import type { FastRound, RoundEngine, RoundResult, SpinRecord } from './round.ts
 import {
   createClusterEvaluator,
   clustersToEval,
+  type CellValues,
   type ClusterGameDef,
   type TumbleRecord,
 } from './cluster.ts';
@@ -71,6 +83,19 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
   const fastFeed = new Int32Array(game.reels);
   const fastRemove = new Uint8Array(cells);
 
+  // Bombas: valores alineados con las tiras de los giros gratis.
+  const bombStrips = game.payMode === 'anywhere' ? game.bombValues ?? null : null;
+  const fastValues: CellValues | null = bombStrips ? { strips: bombStrips, cells: new Int32Array(cells) } : null;
+  const newValues = (): CellValues | null =>
+    bombStrips ? { strips: bombStrips, cells: new Int32Array(cells) } : null;
+  const retrigger = game.scattersToRetrigger ?? game.scattersToTrigger;
+
+  function bombSum(values: CellValues): number {
+    let sum = 0;
+    for (let i = 0; i < cells; i++) sum += values.cells[i]!;
+    return sum;
+  }
+
   /**
    * Corre la cadena de cascadas sobre una grilla ya caída.
    *
@@ -87,11 +112,16 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     room: number,
     detail: TumbleRecord[] | null,
     firstEval: { value: SpinEval | null; multiplier: number },
-  ): { win: number; rung: number; capped: boolean } {
+    values: CellValues | null = null,
+  ): { win: number; rung: number; capped: boolean; bombs: number; bombWin: number } {
     let win = 0;
     let capped = false;
     let n = 0;
     const remove = detail ? new Uint8Array(cells) : fastRemove;
+    // Con bombas el tope se aplica DESPUÉS de multiplicar, al final.
+    const stepRoom = values ? Infinity : room;
+    const snapVals = (): { mults?: number[] } =>
+      values ? { mults: Array.from(values.cells) } : {};
 
     for (;;) {
       const list = ev.clusters(grid);
@@ -115,6 +145,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
             result: { lineWins: [], scatterCount: 0, scatterWin: 0, totalWin: 0 },
             multiplier: mult,
             win: 0,
+            ...snapVals(),
           });
         }
         break;
@@ -122,8 +153,8 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
 
       let step = 0;
       for (const c of list) step += ev.payOf(c.symbol, c.size) * coin * mult;
-      if (step > 0 && win + step >= room) {
-        step = room - win;
+      if (step > 0 && win + step >= stepRoom) {
+        step = stepRoom - win;
         capped = true;
       }
       win += step;
@@ -137,7 +168,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
           firstEval.value = spinEval;
           firstEval.multiplier = mult;
         } else {
-          detail.push({ grid: Array.from(grid), result: spinEval, multiplier: mult, win: step });
+          detail.push({ grid: Array.from(grid), result: spinEval, multiplier: mult, win: step, ...snapVals() });
         }
       }
 
@@ -147,12 +178,25 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
 
       remove.fill(0);
       for (const c of list) for (const cell of c.cells) remove[cell] = 1;
-      ev.tumble(grid, remove, strips, feed);
+      ev.tumble(grid, remove, strips, feed, values);
 
       if (detail && n > 200) break; // guarda contra una tira patológica
     }
 
-    return { win, rung, capped };
+    // Las bombas: solo si la secuencia ganó algo.
+    let bombs = 0;
+    let bombWin = 0;
+    if (values && win > 0) {
+      bombs = bombSum(values);
+      if (bombs > 0) bombWin = win * (bombs - 1);
+    }
+    if (values && win + bombWin >= room) {
+      bombWin = Math.max(0, room - win);
+      if (win > room) win = room;
+      capped = true;
+    }
+
+    return { win: win + bombWin, rung, capped, bombs, bombWin };
   }
 
   function play(rng: Rng, bet: number, ante = false): RoundResult {
@@ -229,21 +273,23 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
 
         const fStops = new Int32Array(game.reels);
         const fFeed = new Int32Array(game.reels);
-        ev.drop(game.freeStrips, rng, grid, fStops, fFeed);
+        const vals = newValues();
+        ev.drop(game.freeStrips, rng, grid, fStops, fFeed, vals);
 
         const sc = ev.countScatters(grid);
         let awarded = 0;
-        if (sc >= game.scattersToTrigger) {
+        if (sc >= retrigger) {
           awarded = game.freeSpinsRetrigger;
           remaining += awarded;
         }
 
         const snap = Array.from(grid);
+        const snapMults = vals ? Array.from(vals.cells) : null;
         const tt: TumbleRecord[] = [];
         const f0: { value: SpinEval | null; multiplier: number } = { value: null, multiplier: 1 };
         const r = cascade(
           grid, game.freeStrips, fFeed, coin, rung,
-          cap - baseWin - featureWin, tt, f0,
+          cap - baseWin - featureWin, tt, f0, vals,
         );
         if (game.freeCarriesLadder) rung = r.rung;
         featureWin += r.win;
@@ -255,10 +301,12 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
         free.push({
           grid: snap,
           stops: Array.from(fStops),
+          ...(snapMults ? { mults: snapMults } : {}),
           multiplier: f0.multiplier,
           awarded,
           result: evalOf,
           ...(tt.length ? { tumbles: tt } : {}),
+          ...(r.bombWin > 0 ? { bombMult: r.bombs, bombWin: r.bombWin } : {}),
         });
       }
     }
@@ -299,13 +347,13 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
       while (remaining > 0 && played < game.maxFreeSpins && !capped) {
         remaining--;
         played++;
-        ev.drop(game.freeStrips, rng, fastGrid, fastStops, fastFeed);
-        if (ev.countScatters(fastGrid) >= game.scattersToTrigger) {
+        ev.drop(game.freeStrips, rng, fastGrid, fastStops, fastFeed, fastValues);
+        if (ev.countScatters(fastGrid) >= retrigger) {
           remaining += game.freeSpinsRetrigger;
         }
         const r = cascade(
           fastGrid, game.freeStrips, fastFeed, coin, rung,
-          cap - baseWin - featureWin, null, nada,
+          cap - baseWin - featureWin, null, nada, fastValues,
         );
         if (game.freeCarriesLadder) rung = r.rung;
         featureWin += r.win;

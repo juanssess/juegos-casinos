@@ -37,6 +37,9 @@ import * as sebuscaTuning from '@casino/game-sebusca/tuning';
 import { GAME as VENDIMIA } from '@casino/game-vendimia';
 import * as vendimiaTuning from '@casino/game-vendimia/tuning';
 
+import { GAME as KIOSCO } from '@casino/game-kiosco';
+import * as kioscoTuning from '@casino/game-kiosco/tuning';
+
 interface CommonEntry {
   engine: () => RoundEngine;
   targetRtp: number;
@@ -85,6 +88,15 @@ export const GAMES: Record<string, GameEntry> = {
     targetRtp: vendimiaTuning.TARGET_RTP,
     shares: vendimiaTuning.SHARES,
     shape: vendimiaTuning.SHAPE,
+  },
+  kiosco: {
+    kind: 'cluster',
+    game: KIOSCO,
+    engine: () => createClusterEngine(KIOSCO),
+    measure: (opts) => measureCluster(KIOSCO, opts),
+    targetRtp: kioscoTuning.TARGET_RTP,
+    shares: kioscoTuning.SHARES,
+    shape: kioscoTuning.SHAPE,
   },
 };
 

@@ -23,6 +23,12 @@
  * Lo único que rompe la linealidad es el TOPE de premio, porque recorta. Por
  * eso se mide sin tope —igual que en Se Busca— y el simulador final reporta
  * cuánto RTP se lleva el recorte.
+ *
+ * Las BOMBAS tampoco la rompen. Qué bombas caen depende solo de las tiras, y
+ * multiplican el premio de la secuencia por su suma: cada racimo de una
+ * secuencia con bombas aporta `premio × suma`. Se cuenta igual que la
+ * escalera, pesando por la suma —que se conoce recién al final de la
+ * secuencia, por eso se acumula aparte y se vuelca al terminar—.
  */
 
 import type { SymbolId } from './types.ts';
@@ -33,6 +39,7 @@ import {
   createClusterEvaluator,
   CLUSTER_TIERS,
   TIER_LABELS,
+  type CellValues,
   type ClusterGameDef,
 } from './cluster.ts';
 
@@ -63,7 +70,12 @@ export function measureCluster(
   const rng = opts.rng ?? new Sfc32Rng(opts.seed ?? 0xbeef);
   const ev = createClusterEvaluator(game);
   const cells = game.reels * game.rows;
-  const stride = CLUSTER_TIERS.length;
+  const stride = (game.tiers ?? CLUSTER_TIERS).length;
+  const retrigger = game.scattersToRetrigger ?? game.scattersToTrigger;
+  const values: CellValues | null =
+    game.payMode === 'anywhere' && game.bombValues
+      ? { strips: game.bombValues, cells: new Int32Array(cells) }
+      : null;
 
   const grid = ev.newGrid();
   const stops = new Int32Array(game.reels);
@@ -73,6 +85,8 @@ export function measureCluster(
   const base = new Float64Array(16 * stride);
   const free = new Float64Array(16 * stride);
   const scatter = new Float64Array(cells + 1);
+  // Lo de una secuencia con bombas, hasta saber cuánto suman.
+  const seq = new Float64Array(16 * stride);
 
   const ladder = game.cascadeMults;
   const multAt = (i: number): number => ladder[i < ladder.length ? i : ladder.length - 1] ?? 1;
@@ -82,21 +96,33 @@ export function measureCluster(
   let cascades = 0;
 
   /** Corre la cadena de cascadas y acumula en `out`. Devuelve el escalón final. */
-  function run(strips: readonly (readonly number[])[], out: Float64Array, rung: number): number {
+  function run(
+    strips: readonly (readonly number[])[], out: Float64Array, rung: number,
+    vals: CellValues | null = null,
+  ): number {
+    const acc = vals ? seq : out;
+    if (vals) seq.fill(0);
     for (;;) {
       const list = ev.clusters(grid);
-      if (list.length === 0) return rung;
+      if (list.length === 0) break;
       const mult = multAt(rung);
       for (const c of list) {
         const t = ev.tierOf(c.size);
-        if (t >= 0) out[c.symbol * stride + t]! += mult;
+        if (t >= 0) acc[c.symbol * stride + t]! += mult;
       }
       cascades++;
       rung++;
       remove.fill(0);
       for (const c of list) for (const cell of c.cells) remove[cell] = 1;
-      ev.tumble(grid, remove, strips, feed);
+      ev.tumble(grid, remove, strips, feed, vals);
     }
+    if (vals) {
+      let bombs = 0;
+      for (let i = 0; i < cells; i++) bombs += vals.cells[i]!;
+      const k = bombs > 0 ? bombs : 1;
+      for (let i = 0; i < seq.length; i++) if (seq[i]) out[i]! += seq[i]! * k;
+    }
+    return rung;
   }
 
   const t0 = performance.now();
@@ -115,11 +141,11 @@ export function measureCluster(
       while (remaining > 0 && played < game.maxFreeSpins) {
         remaining--;
         played++;
-        ev.drop(game.freeStrips, rng, grid, stops, feed);
-        if (ev.countScatters(grid) >= game.scattersToTrigger) {
+        ev.drop(game.freeStrips, rng, grid, stops, feed, values);
+        if (ev.countScatters(grid) >= retrigger) {
           remaining += game.freeSpinsRetrigger;
         }
-        const end = run(game.freeStrips, free, rung);
+        const end = run(game.freeStrips, free, rung, values);
         if (game.freeCarriesLadder) rung = end;
       }
       freeSpinsPlayed += played;
@@ -225,10 +251,11 @@ export function clusterRtp(
 export function validateClusterPaytable(
   paytable: readonly (readonly number[])[],
   order: readonly SymbolId[] = PAYING_SYMBOLS,
+  labels: readonly string[] = TIER_LABELS,
 ): string[] {
   const problems: string[] = [];
   const name = (s: SymbolId) => SYMBOL_NAMES[s] ?? String(s);
-  const T = CLUSTER_TIERS.length;
+  const T = labels.length;
 
   /* Un juego de racimos usa menos símbolos de los que enumera el motor: los
      que no aparecen en ninguna tira tienen la fila en cero. Compararlos
@@ -243,7 +270,7 @@ export function validateClusterPaytable(
       const prev = row[t - 1] ?? 0;
       const cur = row[t] ?? 0;
       if (prev > 0 && cur <= prev) {
-        problems.push(`${name(s)}: ${TIER_LABELS[t]} paga ${cur}, no más que ${TIER_LABELS[t - 1]} (${prev})`);
+        problems.push(`${name(s)}: ${labels[t]} paga ${cur}, no más que ${labels[t - 1]} (${prev})`);
       }
     }
   }
@@ -255,7 +282,7 @@ export function validateClusterPaytable(
       const a = paytable[hi]?.[t] ?? 0;
       const b = paytable[lo]?.[t] ?? 0;
       if (b > a) {
-        problems.push(`${name(lo)} paga más que ${name(hi)} en ${TIER_LABELS[t]} (${b} vs ${a})`);
+        problems.push(`${name(lo)} paga más que ${name(hi)} en ${labels[t]} (${b} vs ${a})`);
       }
     }
   }
@@ -332,7 +359,7 @@ export function solveCluster(
   // 3) Ajuste goloso sobre el residual del redondeo.
   const stepOf = (v: number) => (v < 10 ? 1 : v < 100 ? 5 : v < 500 ? 25 : 50);
   const score = (): [number, number] => [
-    validateClusterPaytable(paytable, symbols).length,
+    validateClusterPaytable(paytable, symbols, game.tierLabels ?? TIER_LABELS).length,
     Math.abs(clusterRtp(game, f, paytable).total - opts.targetRtp),
   ];
   const better = (a: [number, number], b: [number, number]) =>

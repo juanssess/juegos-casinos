@@ -88,10 +88,12 @@ export function roundToSteps(game: SlotGameDef, result: RoundResult): SpinStep[]
       wins: premios(t.result),
       multiplier: t.multiplier,
       win: t.win,
+      ...(t.mults ? { mults: t.mults } : {}),
     }));
 
-    // El premio del paso es la caída inicial MÁS todas sus cascadas.
-    let win = rec.result.totalWin;
+    // El premio del paso es la caída inicial MÁS todas sus cascadas, y lo
+    // que hayan agregado las bombas al final.
+    let win = rec.result.totalWin + (rec.bombWin ?? 0);
     for (const t of tumbles) win += t.win;
 
     return {
@@ -106,6 +108,7 @@ export function roundToSteps(game: SlotGameDef, result: RoundResult): SpinStep[]
       awarded: rec.awarded,
       win,
       ...(tumbles.length ? { tumbles } : {}),
+      ...(rec.bombWin ? { bombMult: rec.bombMult, bombWin: rec.bombWin } : {}),
     };
   };
 

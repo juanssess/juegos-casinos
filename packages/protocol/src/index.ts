@@ -130,6 +130,8 @@ export interface TumbleDto {
   /** Multiplicador de esta cascada (la escalera ×1, ×2, ×3, ×5...). */
   multiplier: number;
   win: Credits;
+  /** Valor de las bombas por celda en esta grilla (0 = no hay). */
+  mults?: number[];
 }
 
 /**
@@ -166,6 +168,13 @@ export interface SpinStep {
    * número que manda es el del paso.
    */
   tumbles?: TumbleDto[];
+  /**
+   * Bombas multiplicadoras al final de la secuencia: la suma de todas y lo
+   * que agregaron. `win` ya lo incluye; el cliente lo usa para la animación
+   * de la suma.
+   */
+  bombMult?: number;
+  bombWin?: Credits;
 }
 
 export interface RoundState {
