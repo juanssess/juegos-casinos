@@ -4,6 +4,39 @@ Documento de referencia del juego #3, y el primero que **no paga por líneas**.
 Todo número acá sale de `tools/sim.ts`, `tools/tune.ts` y `tools/buyprice.ts`,
 no de estimaciones.
 
+<!-- qa:inicio -->
+## QA automático — APROBADO
+
+Generado por `npm run qa -- --game vendimia` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
+Huella de la matemática: `4efc7822eb15bc08`.
+
+| | |
+|---|---|
+| RTP | **96,53 % ± 0,06** (800M de rondas; objetivo 96,50 %) |
+| Reparto | base 52,70 % · giros gratis 43,84 % |
+| Frecuencia de premio | 46,4 % |
+| Bonus | 1 de cada 115 rondas · 8,02 giros por disparo |
+| Volatilidad | media-alta (índice 14,2; desvío 8,64) |
+| Tope | 5.000× · mayor premio medido 5000× |
+| Compra "La Cosecha" | 56,6× · EV 54,69× ± 0,1 (2M) → RTP 96,62 % |
+| Compra "Cosecha grande" | 138,6× · EV 133,78× ± 0,17 (2M) → RTP 96,52 % |
+| Compra "Reserva" | 93,6× · EV 90,5× ± 0,13 (2M) → RTP 96,69 % |
+| Apuesta ante | 1,63× · RTP 96,37 % ± 0,08 · bonus 1 de cada 43 |
+
+Controles:
+
+- ✓ RTP 96,53 % ± 0,06 contra el objetivo 96,50 % (tolerancia ±0,20)
+- ✓ precisión de la medición ±0,06 puntos (máximo ±0,15; si no alcanza, más rondas)
+- ✓ compra "La Cosecha" a 56,6×: EV 54,69× ± 0,1 → RTP 96,62 % (tolerancia ±0,50)
+- ✓ compra "Cosecha grande" a 138,6×: EV 133,78× ± 0,17 → RTP 96,52 % (tolerancia ±0,50)
+- ✓ compra "Reserva" a 93,6×: EV 90,5× ± 0,13 → RTP 96,69 % (tolerancia ±0,50)
+- ✓ ante a 1,63×: RTP 96,37 % ± 0,08, -0,16 puntos contra el juego normal (admitido de -0,50 a +1,00)
+- ✓ tope 5.000×: el mayor premio medido fue 5000× (tiene que llegar al 50 % del tope para no ser decorativo)
+- ⚠ frecuencia de premio 46,4 % (el mercado: 25 % a 35 %)
+- ⚠ bonus 1 de cada 115 rondas (el mercado: de 150 a 400)
+- ✓ tope 5.000× (el mercado: 5.000× a 25.000×)
+<!-- qa:fin -->
+
 ## Ficha técnica
 
 | | |

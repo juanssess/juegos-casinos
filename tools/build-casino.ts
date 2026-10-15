@@ -32,6 +32,18 @@ if (!existsSync(casino)) {
   process.exit(1);
 }
 
+/* El portero: sin QA aprobado y vigente, ningún juego entra al casino.
+   `--sin-qa` existe solo para probar algo localmente, y lo dice fuerte. */
+if (process.argv.includes('--sin-qa')) {
+  console.warn('\n⚠  --sin-qa: se compila SIN verificar el QA. No publicar este build.\n');
+} else {
+  try {
+    execFileSync(process.execPath, [resolve(root, 'tools/qa-check.ts')], { stdio: 'inherit' });
+  } catch {
+    process.exit(1);
+  }
+}
+
 console.log('Compilando el cliente...');
 execFileSync('npm', ['run', 'build'], {
   cwd: root,

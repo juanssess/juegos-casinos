@@ -6,6 +6,35 @@ mecánica es la del género de Sweet Bonanza; el tema, los nombres y el arte son
 propios. Todo número acá sale de `tools/sim.ts`, `tools/tune.ts` y
 `tools/buyprice.ts`.
 
+<!-- qa:inicio -->
+## QA automático — APROBADO
+
+Generado por `npm run qa -- --game kiosco` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
+Huella de la matemática: `897e521178a3660d`.
+
+| | |
+|---|---|
+| RTP | **96,52 % ± 0,09** (800M de rondas; objetivo 96,50 %) |
+| Reparto | base 57,09 % · giros gratis 39,43 % |
+| Frecuencia de premio | 33,8 % |
+| Bonus | 1 de cada 372 rondas · 10,79 giros por disparo |
+| Volatilidad | alta (índice 21,9; desvío 13,30) |
+| Tope | 10.000× · mayor premio medido 10000× |
+| Compra "Vuelta al Kiosco" | 156,1× · EV 150,69× ± 0,29 (2M) → RTP 96,53 % |
+| Apuesta ante | 1,31× · RTP 96,92 % ± 0,14 · bonus 1 de cada 183 |
+
+Controles:
+
+- ✓ RTP 96,52 % ± 0,09 contra el objetivo 96,50 % (tolerancia ±0,20)
+- ✓ precisión de la medición ±0,09 puntos (máximo ±0,15; si no alcanza, más rondas)
+- ✓ compra "Vuelta al Kiosco" a 156,1×: EV 150,69× ± 0,29 → RTP 96,53 % (tolerancia ±0,50)
+- ✓ ante a 1,31×: RTP 96,92 % ± 0,14, +0,40 puntos contra el juego normal (admitido de -0,50 a +1,00)
+- ✓ tope 10.000×: el mayor premio medido fue 10000× (tiene que llegar al 50 % del tope para no ser decorativo)
+- ✓ frecuencia de premio 33,8 % (el mercado: 25 % a 35 %)
+- ✓ bonus 1 de cada 372 rondas (el mercado: de 150 a 400)
+- ✓ tope 10.000× (el mercado: 5.000× a 25.000×)
+<!-- qa:fin -->
+
 ## Ficha técnica
 
 | | |

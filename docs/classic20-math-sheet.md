@@ -4,6 +4,37 @@ Documento de referencia del juego. Es el papel que un operador te pide antes de
 integrar y el que un laboratorio de certificación usa para verificar. Todo
 número acá sale de `tools/sim.ts` y `tools/tune.ts`, no de estimaciones.
 
+<!-- qa:inicio -->
+## QA automático — APROBADO
+
+Generado por `npm run qa -- --game classic20` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
+Huella de la matemática: `4626748b9384c362`.
+
+| | |
+|---|---|
+| RTP | **96,66 % ± 0,06** (800M de rondas; objetivo 96,50 %) |
+| Reparto | base 60,94 % · giros gratis 35,73 % |
+| Frecuencia de premio | 29,7 % |
+| Bonus | 1 de cada 209 rondas · 10,30 giros por disparo |
+| Volatilidad | media-alta (índice 15,3; desvío 9,28) |
+| Tope | sin tope · mayor premio medido 6979× |
+| Compra "La Escalinata" | 80× · EV 77,47× ± 0,15 (2M) → RTP 96,83 % |
+| Compra "Escalinata dorada" | 114× · EV 109,78× ± 0,17 (2M) → RTP 96,30 % |
+| Compra "La Cima" | 292× · EV 281,66× ± 0,35 (2M) → RTP 96,46 % |
+| Apuesta ante | 1,75× · RTP 96,79 % ± 0,09 · bonus 1 de cada 69 |
+
+Controles:
+
+- ✓ RTP 96,66 % ± 0,06 contra el objetivo 96,50 % (tolerancia ±0,20)
+- ✓ precisión de la medición ±0,06 puntos (máximo ±0,15; si no alcanza, más rondas)
+- ✓ compra "La Escalinata" a 80×: EV 77,47× ± 0,15 → RTP 96,83 % (tolerancia ±0,50)
+- ✓ compra "Escalinata dorada" a 114×: EV 109,78× ± 0,17 → RTP 96,30 % (tolerancia ±0,50)
+- ✓ compra "La Cima" a 292×: EV 281,66× ± 0,35 → RTP 96,46 % (tolerancia ±0,50)
+- ✓ ante a 1,75×: RTP 96,79 % ± 0,09, +0,12 puntos contra el juego normal (admitido de -0,50 a +1,00)
+- ✓ frecuencia de premio 29,7 % (el mercado: 25 % a 35 %)
+- ✓ bonus 1 de cada 209 rondas (el mercado: de 150 a 400)
+<!-- qa:fin -->
+
 ## Ficha técnica
 
 | | |

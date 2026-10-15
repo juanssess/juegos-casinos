@@ -92,7 +92,7 @@ const BUCKETS: readonly { label: string; max: number }[] = [
   { label: '500x+', max: Infinity },
 ];
 
-function classifyVolatility(vi: number): string {
+export function classifyVolatility(vi: number): string {
   if (vi < 6) return 'baja';
   if (vi < 11) return 'media';
   if (vi < 16) return 'media-alta';

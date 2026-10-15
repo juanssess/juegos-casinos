@@ -16,6 +16,12 @@
         "-p", "8123", "-c-1", "--silent"
       ],
       "port": 8123
+    },
+    {
+      "name": "casino-py",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8124", "--directory", "../Casino (PRUEBA)"],
+      "port": 8124
     }
   ]
 }
