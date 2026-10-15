@@ -6,18 +6,18 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "bd4ecdbf26420947",
-  "rounds": 3200000000,
+  "sourceHash": "9068dec879863b26",
+  "rounds": 2703285120,
   "targetRtp": 0.965,
-  "rtp": 0.9662331045942184,
-  "rtpCi": 0.0012448028239861683,
-  "rtpBase": 0.4135281171815496,
-  "rtpFeature": 0.5527049871665446,
-  "hitFrequency": 0.327593781875,
-  "triggerOneIn": 258.1406676259819,
-  "freeSpinsPerTrigger": 8.068225852432919,
-  "stdDev": 35.92687828901159,
-  "volatilityIndex": 59.09971478542407,
+  "rtp": 0.9659237039876007,
+  "rtpCi": 0.001357473344556722,
+  "rtpBase": 0.41285034244138097,
+  "rtpFeature": 0.553073361594407,
+  "hitFrequency": 0.3275800249290759,
+  "triggerOneIn": 258.08562670051947,
+  "freeSpinsPerTrigger": 8.068343661238721,
+  "stdDev": 36.00983787612551,
+  "volatilityIndex": 59.236183306226465,
   "volatilityLabel": "muy alta",
   "maxWinX": 10000,
   "maxObservedX": 10000,
@@ -26,35 +26,35 @@ export const QA: QaSummary | null = {
       "variant": "simple",
       "label": "La Cacería",
       "priceX": 151,
-      "ev": 146.05085930000428,
-      "evCi": 0.7757523706787123,
-      "rtp": 0.9672242337748628,
+      "ev": 145.89806513333758,
+      "evCi": 0.7752902807071722,
+      "rtp": 0.9662123518764079,
       "buys": 2000000
     },
     {
       "variant": "larga",
       "label": "Cacería larga",
       "priceX": 472,
-      "ev": 457.226438566662,
-      "evCi": 1.5676351048135129,
-      "rtp": 0.9687000817090297,
+      "ev": 456.76370993332864,
+      "evCi": 1.5667244695573137,
+      "rtp": 0.9677197244350183,
       "buys": 2000000
     },
     {
       "variant": "completa",
       "label": "Cacería completa",
       "priceX": 1048,
-      "ev": 1015.6543359666655,
-      "evCi": 2.4807062736527152,
-      "rtp": 0.9691358167620854,
+      "ev": 1014.6825915333326,
+      "evCi": 2.47941666970399,
+      "rtp": 0.9682085797073784,
       "buys": 2000000
     }
   ],
   "ante": {
     "costX": 1.8,
-    "rtp": 0.9724118514645507,
-    "rtpCi": 0.0030417832227079816,
-    "triggerOneIn": 107.74062521884815,
+    "rtp": 0.9712997685016805,
+    "rtpCi": 0.0030398793502349514,
+    "triggerOneIn": 107.74059619875015,
     "rounds": 400000000
   },
   "checks": [
@@ -62,37 +62,37 @@ export const QA: QaSummary | null = {
       "id": "rtp",
       "level": "error",
       "ok": true,
-      "msg": "RTP 96,62 % ± 0,12 contra el objetivo 96,50 % (tolerancia ±0,20)"
+      "msg": "RTP 96,59 % ± 0,14 contra el objetivo 96,50 % (tolerancia ±0,20)"
     },
     {
       "id": "rtp-precision",
       "level": "error",
       "ok": true,
-      "msg": "precisión de la medición ±0,12 puntos (máximo ±0,15; si no alcanza, más rondas)"
+      "msg": "precisión de la medición ±0,14 puntos (máximo ±0,15; si no alcanza, más rondas)"
     },
     {
       "id": "buy-simple",
       "level": "error",
       "ok": true,
-      "msg": "compra \"La Cacería\" a 151×: EV 146,05× ± 0,78 → RTP 96,72 % (tolerancia ±0,50)"
+      "msg": "compra \"La Cacería\" a 151×: EV 145,9× ± 0,78 → RTP 96,62 % (tolerancia ±0,50)"
     },
     {
       "id": "buy-larga",
       "level": "error",
       "ok": true,
-      "msg": "compra \"Cacería larga\" a 472×: EV 457,23× ± 1,57 → RTP 96,87 % (tolerancia ±0,50)"
+      "msg": "compra \"Cacería larga\" a 472×: EV 456,76× ± 1,57 → RTP 96,77 % (tolerancia ±0,50)"
     },
     {
       "id": "buy-completa",
       "level": "error",
       "ok": true,
-      "msg": "compra \"Cacería completa\" a 1.048×: EV 1.015,65× ± 2,48 → RTP 96,91 % (tolerancia ±0,50)"
+      "msg": "compra \"Cacería completa\" a 1.048×: EV 1.014,68× ± 2,48 → RTP 96,82 % (tolerancia ±0,50)"
     },
     {
       "id": "ante",
       "level": "error",
       "ok": true,
-      "msg": "ante a 1,8×: RTP 97,24 % ± 0,30, +0,62 puntos contra el juego normal (admitido de -0,50 a +1,00)"
+      "msg": "ante a 1,8×: RTP 97,13 % ± 0,30, +0,54 puntos contra el juego normal (admitido de -0,50 a +1,00)"
     },
     {
       "id": "tope",

@@ -6,13 +6,13 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "4efc7822eb15bc08",
+  "sourceHash": "6c31e70cc38d142f",
   "rounds": 800000000,
   "targetRtp": 0.965,
   "rtp": 0.9653447197082715,
   "rtpCi": 0.0005984323782226871,
-  "rtpBase": 0.5269904925672371,
-  "rtpFeature": 0.4383542271875082,
+  "rtpBase": 0.5269904925672372,
+  "rtpFeature": 0.43835422718750827,
   "hitFrequency": 0.46406108125,
   "triggerOneIn": 114.81735142778247,
   "freeSpinsPerTrigger": 8.022348479846972,
@@ -36,7 +36,7 @@ export const QA: QaSummary | null = {
       "label": "Cosecha grande",
       "priceX": 138.6,
       "ev": 133.7796399250006,
-      "evCi": 0.17317961044197505,
+      "evCi": 0.17317961044197497,
       "rtp": 0.9652210672799466,
       "buys": 2000000
     },
@@ -44,9 +44,9 @@ export const QA: QaSummary | null = {
       "variant": "reserva",
       "label": "Reserva",
       "priceX": 93.6,
-      "ev": 90.50358502500207,
+      "ev": 90.50358502500205,
       "evCi": 0.1349059157411376,
-      "rtp": 0.9669186434295093,
+      "rtp": 0.9669186434295092,
       "buys": 2000000
     }
   ],

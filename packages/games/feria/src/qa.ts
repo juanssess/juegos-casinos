@@ -6,18 +6,18 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "337e7001e26cc501",
+  "sourceHash": "d3d9bb67cad697a0",
   "rounds": 800000000,
   "targetRtp": 0.965,
-  "rtp": 0.96246603375,
-  "rtpCi": 0.000884519584611345,
-  "rtpBase": 0.7014472346875,
+  "rtp": 0.965289465625,
+  "rtpCi": 0.0008853344689224879,
+  "rtpBase": 0.7042706665625,
   "rtpFeature": 0.2610187990625,
   "hitFrequency": 0.2257934875,
   "triggerOneIn": 169.81215379547146,
   "freeSpinsPerTrigger": 5.904078845481129,
-  "stdDev": 12.764281558591637,
-  "volatilityIndex": 20.997243163883244,
+  "stdDev": 12.776040950883305,
+  "volatilityIndex": 21.016587364203037,
   "volatilityLabel": "alta",
   "maxWinX": 5000,
   "maxObservedX": 5000,
@@ -26,16 +26,16 @@ export const QA: QaSummary | null = {
       "variant": "simple",
       "label": "Hold & Win",
       "priceX": 46.2,
-      "ev": 44.477685375,
-      "evCi": 0.21453316970673925,
-      "rtp": 0.9627204626623376,
+      "ev": 44.477707875,
+      "evCi": 0.21453320537035941,
+      "rtp": 0.9627209496753246,
       "buys": 2000000
     }
   ],
   "ante": {
     "costX": 1.19,
-    "rtp": 0.9606565042016808,
-    "rtpCi": 0.0014692601082113635,
+    "rtp": 0.9628835351890757,
+    "rtpCi": 0.0014699126858367855,
     "triggerOneIn": 86.16175447734172,
     "rounds": 400000000
   },
@@ -43,8 +43,8 @@ export const QA: QaSummary | null = {
     {
       "id": "rtp",
       "level": "error",
-      "ok": false,
-      "msg": "RTP 96,25 % ± 0,09 contra el objetivo 96,50 % (tolerancia ±0,20)"
+      "ok": true,
+      "msg": "RTP 96,53 % ± 0,09 contra el objetivo 96,50 % (tolerancia ±0,20)"
     },
     {
       "id": "rtp-precision",
@@ -62,7 +62,7 @@ export const QA: QaSummary | null = {
       "id": "ante",
       "level": "error",
       "ok": true,
-      "msg": "ante a 1,19×: RTP 96,07 % ± 0,15, -0,18 puntos contra el juego normal (admitido de -0,50 a +1,00)"
+      "msg": "ante a 1,19×: RTP 96,29 % ± 0,15, -0,24 puntos contra el juego normal (admitido de -0,50 a +1,00)"
     },
     {
       "id": "tope",
@@ -89,5 +89,5 @@ export const QA: QaSummary | null = {
       "msg": "tope 5.000× (el mercado: 5.000× a 25.000×)"
     }
   ],
-  "passed": false
+  "passed": true
 };

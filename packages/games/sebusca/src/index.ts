@@ -61,7 +61,7 @@ const PAYTABLE: readonly (readonly number[])[] = (() => {
   t[SYM.L1] = [0, 0, 0, 7, 30, 90];
   t[SYM.L2] = [0, 0, 0, 7, 20, 80];
   t[SYM.L3] = [0, 0, 0, 6, 20, 65];
-  t[SYM.L4] = [0, 0, 0, 6, 15, 55];
+  t[SYM.L4] = [0, 0, 0, 6, 15, 50];
   t[SYM.L5] = [0, 0, 0, 6, 15, 46];
   return t;
 })();

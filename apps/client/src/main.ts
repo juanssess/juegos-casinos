@@ -130,6 +130,7 @@ async function main(): Promise<void> {
     gap: GAP,
     textures,
     scattersToTrigger: cfg.scattersToTrigger,
+    ...(profile.hold ? { anticipateAt: profile.hold.trigger - 2 } : {}),
     ...(profile.valueColor ? { valueColor: profile.valueColor } : {}),
   };
   const reelSet: ReelSet | ClusterBoard = profile.cluster

@@ -66,6 +66,12 @@ export interface ReelSetOptions {
   gap: number;
   textures: SymbolTextures;
   scattersToTrigger: number;
+  /**
+   * Con cuántos scatters ya a la vista empieza la expectativa. Por defecto,
+   * cuando falta uno. En Hold & Win caen de a varios por rodillo, y con
+   * "falta una" el juego dudaría casi en cada giro: ahí arranca cuando faltan dos.
+   */
+  anticipateAt?: number;
 }
 
 export class ReelSet {
@@ -165,6 +171,7 @@ export class ReelSet {
    */
   spinTo(grid: readonly number[], events?: SpinEvents): Promise<void> {
     const { reels, rows, scattersToTrigger } = this.#o;
+    const anticipateAt = this.#o.anticipateAt ?? scattersToTrigger - 1;
     this.#elapsed = 0;
     this.#running = true;
     this.#events = events ?? null;
@@ -189,10 +196,12 @@ export class ReelSet {
       // Expectativa: este rodillo puede completar el disparo, y los que faltan
       // después alcanzan para llegar. Ahí es cuando el juego "duda".
       const remaining = reels - r;
-      reel.anticipating =
-        r >= scattersToTrigger - 1 &&
-        scattersBefore[r]! >= scattersToTrigger - 1 &&
-        scattersBefore[r]! + remaining >= scattersToTrigger;
+      const before = scattersBefore[r]!;
+      reel.anticipating = this.#o.anticipateAt === undefined
+        // La regla de siempre: falta uno, y este rodillo puede ponerlo.
+        ? r >= scattersToTrigger - 1 && before >= scattersToTrigger - 1 && before + remaining >= scattersToTrigger
+        // Varios por rodillo: desde el umbral, mientras todavía no disparó.
+        : before >= anticipateAt && before < scattersToTrigger && before + remaining * rows >= scattersToTrigger;
 
       reel.phase = 'spinning';
       reel.antNotified = false;

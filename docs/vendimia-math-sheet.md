@@ -8,7 +8,7 @@ no de estimaciones.
 ## QA automático — APROBADO
 
 Generado por `npm run qa -- --game vendimia` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `4efc7822eb15bc08`.
+Huella de la matemática: `6c31e70cc38d142f`.
 
 | | |
 |---|---|

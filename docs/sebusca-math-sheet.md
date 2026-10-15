@@ -7,29 +7,29 @@ Documento de referencia del juego #2. Todo número acá sale de `tools/sim.ts`,
 ## QA automático — APROBADO
 
 Generado por `npm run qa -- --game sebusca` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `bd4ecdbf26420947`.
+Huella de la matemática: `9068dec879863b26`.
 
 | | |
 |---|---|
-| RTP | **96,62 % ± 0,12** (3.200M de rondas; objetivo 96,50 %) |
-| Reparto | base 41,35 % · giros gratis 55,27 % |
+| RTP | **96,59 % ± 0,14** (2.703,285M de rondas; objetivo 96,50 %) |
+| Reparto | base 41,29 % · giros gratis 55,31 % |
 | Frecuencia de premio | 32,8 % |
 | Bonus | 1 de cada 258 rondas · 8,07 giros por disparo |
-| Volatilidad | muy alta (índice 59,1; desvío 35,93) |
+| Volatilidad | muy alta (índice 59,2; desvío 36,01) |
 | Tope | 10.000× · mayor premio medido 10000× |
-| Compra "La Cacería" | 151× · EV 146,05× ± 0,78 (2M) → RTP 96,72 % |
-| Compra "Cacería larga" | 472× · EV 457,23× ± 1,57 (2M) → RTP 96,87 % |
-| Compra "Cacería completa" | 1.048× · EV 1.015,65× ± 2,48 (2M) → RTP 96,91 % |
-| Apuesta ante | 1,8× · RTP 97,24 % ± 0,30 · bonus 1 de cada 108 |
+| Compra "La Cacería" | 151× · EV 145,9× ± 0,78 (2M) → RTP 96,62 % |
+| Compra "Cacería larga" | 472× · EV 456,76× ± 1,57 (2M) → RTP 96,77 % |
+| Compra "Cacería completa" | 1.048× · EV 1.014,68× ± 2,48 (2M) → RTP 96,82 % |
+| Apuesta ante | 1,8× · RTP 97,13 % ± 0,30 · bonus 1 de cada 108 |
 
 Controles:
 
-- ✓ RTP 96,62 % ± 0,12 contra el objetivo 96,50 % (tolerancia ±0,20)
-- ✓ precisión de la medición ±0,12 puntos (máximo ±0,15; si no alcanza, más rondas)
-- ✓ compra "La Cacería" a 151×: EV 146,05× ± 0,78 → RTP 96,72 % (tolerancia ±0,50)
-- ✓ compra "Cacería larga" a 472×: EV 457,23× ± 1,57 → RTP 96,87 % (tolerancia ±0,50)
-- ✓ compra "Cacería completa" a 1.048×: EV 1.015,65× ± 2,48 → RTP 96,91 % (tolerancia ±0,50)
-- ✓ ante a 1,8×: RTP 97,24 % ± 0,30, +0,62 puntos contra el juego normal (admitido de -0,50 a +1,00)
+- ✓ RTP 96,59 % ± 0,14 contra el objetivo 96,50 % (tolerancia ±0,20)
+- ✓ precisión de la medición ±0,14 puntos (máximo ±0,15; si no alcanza, más rondas)
+- ✓ compra "La Cacería" a 151×: EV 145,9× ± 0,78 → RTP 96,62 % (tolerancia ±0,50)
+- ✓ compra "Cacería larga" a 472×: EV 456,76× ± 1,57 → RTP 96,77 % (tolerancia ±0,50)
+- ✓ compra "Cacería completa" a 1.048×: EV 1.014,68× ± 2,48 → RTP 96,82 % (tolerancia ±0,50)
+- ✓ ante a 1,8×: RTP 97,13 % ± 0,30, +0,54 puntos contra el juego normal (admitido de -0,50 a +1,00)
 - ✓ tope 10.000×: el mayor premio medido fue 10000× (tiene que llegar al 50 % del tope para no ser decorativo)
 - ✓ frecuencia de premio 32,8 % (el mercado: 25 % a 35 %)
 - ✓ bonus 1 de cada 258 rondas (el mercado: de 150 a 400)
@@ -53,6 +53,11 @@ Se subió un escalón a seis premios de 5 iguales —H1 2.900→2.950, H2
 mueve cada uno sobre la misma muestra, y el QA los verificó con el motor:
 96,62 % ± 0,12. **Para Se Busca, el número que vale es el del QA, no el
 del solver.**
+
+Segunda medición (QA adaptativo, ~2.700M de rondas): 96,71 % ± 0,14, sobre
+el techo de tolerancia de 96,70 %. Con las dos mediciones el valor real anda
+en ~96,65 %, pegado al borde: L4 vuelve de 55 a 50 (−0,12 puntos) para que
+quede centrado.
 
 ## Ficha técnica
 
