@@ -95,7 +95,10 @@ export class Hud {
   #countT = 0;
   #counting = false;
 
-  constructor(private width: number, anteCostX?: number) {
+  private width: number;
+
+  constructor(width: number, anteCostX?: number) {
+    this.width = width;
     const v = this.view;
     this.#minus = this.#betButton('−', -1);
     this.#plus = this.#betButton('+', 1);

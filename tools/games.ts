@@ -1,111 +1,56 @@
 /**
  * Registro de juegos para las herramientas de línea de comandos.
  *
- * Cada entrada dice: la definición, cómo construir su motor (los juegos con
- * mecánica propia traen el suyo), cómo medir sus frecuencias y sus objetivos
- * de diseño. `tools/sim.ts --game sebusca` y compañía salen de acá.
+ * Ya no es una lista: recorre `packages/games/` y carga el `manifest.ts` de
+ * cada carpeta. Un juego nuevo aparece en `sim`, `tune`, `buyprice` y `qa`
+ * en cuanto existe su manifest — que es exactamente lo que genera
+ * `npm run new-game`.
  *
- * La entrada es una UNIÓN DISCRIMINADA por `kind` porque un juego de racimos
- * no se mide ni se resuelve igual que uno de líneas: las frecuencias se
- * cuentan por tramo de tamaño y no por cantidad en línea, y los premios se
- * pagan sobre la apuesta en fichas y no por línea. Fingir que es lo mismo
- * pedía un tipo con la mitad de los campos opcionales, que es la forma
- * educada de decir "acá adentro hay dos cosas distintas".
+ * La forma de cada entrada (unión discriminada por `kind`) está en
+ * `@casino/math` → manifest.ts.
  */
 
-import {
-  createRoundEngine,
-  createClusterEngine,
-  measure,
-  measureCluster,
-  type ClusterFreqReport,
-  type ClusterGameDef,
-  type FreqReport,
-  type RoundEngine,
-  type SlotGameDef,
-  type SymbolId,
-} from '@casino/math';
+import { existsSync, readdirSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import { GAME as CLASSIC20 } from '@casino/game-classic20';
-import * as classic20Tuning from '@casino/game-classic20/tuning';
+import type { GameManifest } from '@casino/math';
 
-import { GAME as SEBUSCA } from '@casino/game-sebusca';
-import { createSebuscaEngine } from '@casino/game-sebusca/engine';
-import { measureSebusca } from '@casino/game-sebusca/measure';
-import * as sebuscaTuning from '@casino/game-sebusca/tuning';
+export type { GameManifest as GameEntry } from '@casino/math';
 
-import { GAME as VENDIMIA } from '@casino/game-vendimia';
-import * as vendimiaTuning from '@casino/game-vendimia/tuning';
+export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+export const GAMES_DIR = resolve(ROOT, 'packages/games');
 
-import { GAME as KIOSCO } from '@casino/game-kiosco';
-import * as kioscoTuning from '@casino/game-kiosco/tuning';
-
-interface CommonEntry {
-  engine: () => RoundEngine;
-  targetRtp: number;
-  shares: Partial<Record<SymbolId, number>>;
-  shape: Partial<Record<SymbolId, readonly number[]>>;
+/** Los ids de los juegos que tienen manifest, en orden alfabético. */
+export function gameIds(): string[] {
+  return readdirSync(GAMES_DIR, { withFileTypes: true })
+    .filter((d) => d.isDirectory() && existsSync(resolve(GAMES_DIR, d.name, 'src/manifest.ts')))
+    .map((d) => d.name)
+    .sort();
 }
 
-export interface LinesEntry extends CommonEntry {
-  kind: 'lines';
-  game: SlotGameDef;
-  measure: (opts: { rounds: number; seed?: number }) => FreqReport;
+export async function loadGame(id: string): Promise<GameManifest> {
+  const file = resolve(GAMES_DIR, id, 'src/manifest.ts');
+  if (!existsSync(file)) {
+    throw new Error(`Juego desconocido: ${id}. Disponibles: ${gameIds().join(', ')}`);
+  }
+  const mod = (await import(pathToFileURL(file).href)) as { MANIFEST?: GameManifest };
+  if (!mod.MANIFEST) throw new Error(`${id}/src/manifest.ts no exporta MANIFEST`);
+  if (mod.MANIFEST.id !== id) {
+    throw new Error(`El manifest de la carpeta ${id} dice llamarse "${mod.MANIFEST.id}"`);
+  }
+  return mod.MANIFEST;
 }
 
-export interface ClusterEntry extends CommonEntry {
-  kind: 'cluster';
-  game: ClusterGameDef;
-  measure: (opts: { rounds: number; seed?: number }) => ClusterFreqReport;
+export async function loadGames(): Promise<Record<string, GameManifest>> {
+  const out: Record<string, GameManifest> = {};
+  for (const id of gameIds()) out[id] = await loadGame(id);
+  return out;
 }
 
-export type GameEntry = LinesEntry | ClusterEntry;
-
-export const GAMES: Record<string, GameEntry> = {
-  classic20: {
-    kind: 'lines',
-    game: CLASSIC20,
-    engine: () => createRoundEngine(CLASSIC20),
-    measure: (opts) => measure(CLASSIC20, opts),
-    targetRtp: classic20Tuning.TARGET_RTP,
-    shares: classic20Tuning.SHARES,
-    shape: classic20Tuning.SHAPE,
-  },
-  sebusca: {
-    kind: 'lines',
-    game: SEBUSCA,
-    engine: () => createSebuscaEngine(SEBUSCA),
-    measure: (opts) => measureSebusca(SEBUSCA, opts),
-    targetRtp: sebuscaTuning.TARGET_RTP,
-    shares: sebuscaTuning.SHARES,
-    shape: sebuscaTuning.SHAPE,
-  },
-  vendimia: {
-    kind: 'cluster',
-    game: VENDIMIA,
-    engine: () => createClusterEngine(VENDIMIA),
-    measure: (opts) => measureCluster(VENDIMIA, opts),
-    targetRtp: vendimiaTuning.TARGET_RTP,
-    shares: vendimiaTuning.SHARES,
-    shape: vendimiaTuning.SHAPE,
-  },
-  kiosco: {
-    kind: 'cluster',
-    game: KIOSCO,
-    engine: () => createClusterEngine(KIOSCO),
-    measure: (opts) => measureCluster(KIOSCO, opts),
-    targetRtp: kioscoTuning.TARGET_RTP,
-    shares: kioscoTuning.SHARES,
-    shape: kioscoTuning.SHAPE,
-  },
-};
-
-export function pickGame(argv: readonly string[]): GameEntry {
+/** `--game <id>` de la línea de comandos; classic20 si no se pasa. */
+export async function pickGame(argv: readonly string[]): Promise<GameManifest> {
   const i = argv.indexOf('--game');
   const id = i === -1 ? 'classic20' : (argv[i + 1] ?? 'classic20');
-  const entry = GAMES[id];
-  if (!entry) {
-    throw new Error(`Juego desconocido: ${id}. Disponibles: ${Object.keys(GAMES).join(', ')}`);
-  }
-  return entry;
+  return loadGame(id);
 }

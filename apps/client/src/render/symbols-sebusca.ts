@@ -9,7 +9,7 @@
  */
 
 import { Container, Graphics, Rectangle, Text, type Application, type Texture } from 'pixi.js';
-import { U, contactShadow, medallion, vgrad, metal, makeLighting } from './material.ts';
+import { contactShadow, medallion, vgrad, metal, makeLighting } from './material.ts';
 import { SYM, type SymbolId } from '@casino/math';
 import { SKIN } from '@casino/game-sebusca/theme';
 

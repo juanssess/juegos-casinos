@@ -18,7 +18,7 @@ function arg(name: string, fallback?: string): string | undefined {
 
 const has = (name: string) => process.argv.includes(`--${name}`);
 
-const entry = pickGame(process.argv);
+const entry = await pickGame(process.argv);
 const game = entry.game;
 
 const rounds = Math.round(Number(arg('rounds', '5e6')));

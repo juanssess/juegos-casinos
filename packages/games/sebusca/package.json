@@ -8,7 +8,8 @@
     "./engine": "./src/engine.ts",
     "./measure": "./src/measure.ts",
     "./tuning": "./src/tuning.ts",
-    "./theme": "./src/theme.ts"
+    "./theme": "./src/theme.ts",
+    "./manifest": "./src/manifest.ts"
   },
   "dependencies": {
     "@casino/math": "*"

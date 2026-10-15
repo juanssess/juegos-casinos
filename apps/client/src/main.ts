@@ -581,7 +581,7 @@ async function main(): Promise<void> {
     /* La cadena completa: la caída inicial es la etapa 0 y cada cascada es
        una más. La última que manda el servidor no paga nada — es la grilla
        ya asentada— y está justamente para que la jugada termine de verse. */
-    const etapas: { grid: number[]; wins: typeof step.lineWins; multiplier: number; mults?: number[] }[] = [
+    const etapas: { grid: number[]; wins: typeof step.lineWins; multiplier: number; mults?: number[] | undefined }[] = [
       { grid: step.grid, wins: step.lineWins, multiplier: step.multiplier, mults: step.mults },
       ...(step.tumbles ?? []).map((t) => ({ grid: t.grid, wins: t.wins, multiplier: t.multiplier, mults: t.mults })),
     ];
@@ -853,7 +853,7 @@ async function main(): Promise<void> {
     wins.clear();
 
     try {
-      const res = await rgs.buyBonus({ bet, variant: variantElegida || undefined });
+      const res = await rgs.buyBonus({ bet, ...(variantElegida ? { variant: variantElegida } : {}) });
       balance = res.balance;
       hud.setBalance(balance - res.round.totalWin);
       await playRound(res.round.steps, res.round.bet, res.round.roundId, -1, res.round.climb);

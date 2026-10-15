@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./tuning": "./src/tuning.ts",
-    "./theme": "./src/theme.ts"
+    "./theme": "./src/theme.ts",
+    "./manifest": "./src/manifest.ts"
   },
   "exports_note": "El paquete del juego NO depende de pixi: la math y el tema son datos, el render vive en apps/client.",
   "dependencies": {

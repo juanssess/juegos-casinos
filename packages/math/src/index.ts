@@ -8,3 +8,4 @@ export * from './cluster-round.ts';
 export * from './cluster-tune.ts';
 export * from './simulate.ts';
 export * from './tune.ts';
+export * from './manifest.ts';

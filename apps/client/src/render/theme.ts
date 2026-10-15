@@ -10,34 +10,10 @@
  * trae el suyo y el render no se entera de cuál es.
  */
 
-export interface Palette {
-  bgTop: number;
-  bgBottom: number;
-  frame: number;
-  frameLight: number;
-  reelBg: number;
-  reelBgAlt: number;
-  text: number;
-  textDim: number;
-  win: number;
-  bigWin: number;
-  scatter: number;
-  /** Solo en juegos con multiplicadores; cae al color de premio si falta. */
-  mult?: number;
-}
-
-export interface Timing {
-  firstReelStop: number;
-  reelStagger: number;
-  anticipationExtra: number;
-  spinSpeed: number;
-  anticipationSpeed: number;
-  bounce: number;
-  winCycle: number;
-  countUp: number;
-  freeSpinGap: number;
-  wildReveal?: number;
-}
+/* Los tipos viven en @casino/math (manifest.ts): el tema de cada juego los
+   declara sin depender de Pixi. */
+import type { Palette, Timing } from '@casino/math';
+export type { Palette, Timing };
 
 /**
  * Valores por defecto: se pisan en el arranque con los del juego elegido.

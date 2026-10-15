@@ -207,8 +207,8 @@ export class LocalRgs implements RgsClient {
       climbTiers: g.climb?.tiers ?? [],
       climbAscendPerMil: g.climb?.ascendPerMil ?? [],
       bonusBuyX: this.#opts.bonusBuyX,
-      bonusVariants: this.#game.bonusVariants,
-      anteCostX: this.#game.anteStrips ? this.#game.anteCostX : undefined,
+      ...(this.#game.bonusVariants ? { bonusVariants: this.#game.bonusVariants } : {}),
+      ...(this.#game.anteStrips && this.#game.anteCostX ? { anteCostX: this.#game.anteCostX } : {}),
       ...(this.#opts.maxWinX ? { maxWinX: this.#opts.maxWinX } : {}),
     };
   }

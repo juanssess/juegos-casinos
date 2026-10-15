@@ -23,7 +23,7 @@ function arg(name: string, fallback: string): string {
   return i === -1 ? fallback : (process.argv[i + 1] ?? fallback);
 }
 
-const entry = pickGame(process.argv);
+const entry = await pickGame(process.argv);
 const game = entry.game;
 const engine = entry.engine();
 
