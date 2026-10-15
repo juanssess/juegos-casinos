@@ -54,15 +54,15 @@ export interface SebuscaDef extends SlotGameDef {
 const PAYTABLE: readonly (readonly number[])[] = (() => {
   const t: number[][] = Array.from({ length: 11 }, () => [0, 0, 0, 0, 0, 0]);
   //                    3    4     5
-  t[SYM.H1] = [0, 0, 0, 60, 400, 2900];
-  t[SYM.H2] = [0, 0, 0, 30, 175, 850];
+  t[SYM.H1] = [0, 0, 0, 60, 400, 2950];
+  t[SYM.H2] = [0, 0, 0, 30, 175, 875];
   t[SYM.H3] = [0, 0, 0, 20, 90, 350];
   t[SYM.H4] = [0, 0, 0, 15, 55, 250];
-  t[SYM.L1] = [0, 0, 0, 7, 30, 85];
-  t[SYM.L2] = [0, 0, 0, 7, 20, 75];
+  t[SYM.L1] = [0, 0, 0, 7, 30, 90];
+  t[SYM.L2] = [0, 0, 0, 7, 20, 80];
   t[SYM.L3] = [0, 0, 0, 6, 20, 65];
-  t[SYM.L4] = [0, 0, 0, 6, 15, 50];
-  t[SYM.L5] = [0, 0, 0, 6, 15, 45];
+  t[SYM.L4] = [0, 0, 0, 6, 15, 55];
+  t[SYM.L5] = [0, 0, 0, 6, 15, 46];
   return t;
 })();
 
