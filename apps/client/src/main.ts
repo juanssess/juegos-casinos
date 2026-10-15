@@ -930,7 +930,10 @@ async function main(): Promise<void> {
     buyModal.addChild(t1);
 
     const sub = new Text({
-      text: `Las tres pagan el mismo RTP (${(cfg.rtp * 100).toFixed(2)}%): cambia qué te llevás, no la ventaja.`,
+      // El texto depende de cuántas variantes tenga el juego: El Kiosco tiene una sola.
+      text: VARIANTES.length === 1
+        ? `Paga el mismo RTP que el juego (${(cfg.rtp * 100).toFixed(2)}%): te ahorrás el camino, no ganás ventaja.`
+        : `Las ${VARIANTES.length === 2 ? 'dos' : 'tres'} pagan el mismo RTP (${(cfg.rtp * 100).toFixed(2)}%): cambia qué te llevás, no la ventaja.`,
       style: { fontFamily: 'Georgia, serif', fontSize: 11.5, fill: PALETTE.textDim, align: 'center' },
     });
     sub.anchor.set(0.5);
