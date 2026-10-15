@@ -40,6 +40,8 @@ const CORES = Number(arg('cores', String(availableParallelism())));
 const BASE_ROUNDS = Number(arg('rounds', '8e8')) * SCALE;
 const ANTE_ROUNDS = Number(arg('ante-rounds', '4e8')) * SCALE;
 const BUYS = Number(arg('buys', '2e6')) * SCALE;
+/** Techo de la precisión adaptativa: más allá de esto, el juego necesita otro diseño. */
+const MAX_ROUNDS = Number(arg('max-rounds', '4e9'));
 
 /* ── Criterios ────────────────────────────────────────────────────────────
    Los de publicación son de honestidad: el número que se muestra tiene que
@@ -210,7 +212,19 @@ async function qaGame(id: string): Promise<boolean> {
   const t0 = Date.now();
   console.log(`\n━━ QA de ${id} ${QUICK ? '(rápido: no escribe nada) ' : ''}━━  ${CORES} núcleos`);
 
-  const base = aggregate(await runJobs(split(id, 'base', BASE_ROUNDS, 1000), 'juego normal'));
+  let base = aggregate(await runJobs(split(id, 'base', BASE_ROUNDS, 1000), 'juego normal'));
+  /* Precisión adaptativa: un juego de cola pesada (Se Busca) necesita varias
+     veces más rondas que uno parejo para el mismo intervalo. En vez de una
+     cantidad fija para todos, se mide, se ve cuánto falta y se completa: el
+     intervalo cae como 1/√n, así que n_necesario = n · (ic / ic_objetivo)². */
+  let extra = 0;
+  while (!QUICK && base.ci > RTP_CI_MAX * 0.95 && base.n < MAX_ROUNDS) {
+    const want = Math.min(MAX_ROUNDS, Math.ceil(base.n * Math.pow(base.ci / (RTP_CI_MAX * 0.9), 2)));
+    const more = want - base.n;
+    console.log(`  precisión ±${pp(base.ci)}: faltan ~${(more / 1e6).toLocaleString('es-AR')}M de rondas`);
+    extra++;
+    base = aggregate([...base.r, ...await runJobs(split(id, 'base', more, 1000 + extra * 100_000), 'juego normal (más)')]);
+  }
   const ante = m.game.anteStrips
     ? aggregate(await runJobs(split(id, 'ante', ANTE_ROUNDS, 5000), 'apuesta ante'))
     : null;

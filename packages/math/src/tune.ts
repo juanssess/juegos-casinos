@@ -39,6 +39,12 @@ export interface FreqReport {
   triggers: number;
   freeSpinsPlayed: number;
   elapsedMs: number;
+  /**
+   * RTP que no depende de la tabla de pagos (la función de Hold & Win: las
+   * monedas valen lo que valen). Se suma como los pagos de scatter, que
+   * tampoco se escalan, y el solver ajusta las líneas para el resto.
+   */
+  fixedRtp?: number;
 }
 
 export function measure(
@@ -175,6 +181,7 @@ export function rtpFromFreq(
     scatterRtp += ((f.scatter[c] ?? 0) / rounds) * pay;
   }
 
+  scatterRtp += f.fixedRtp ?? 0;
   bySymbol.sort((a, b) => b.total - a.total);
 
   return {

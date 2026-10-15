@@ -15,6 +15,7 @@ export async function playLinesStep(ctx: PlayContext, step: SpinStep, roundBet: 
   const { cfg, hud, fx, wins, freeCounter, multLayer, session } = ctx;
   const reelSet = ctx.reelSet as ReelSet;
   wins.clear();
+  ctx.holdBoard?.clear();
 
   if (step.kind === 'free' && step.freeIndex && step.freeTotal) {
     ctx.setFreeMode(true);
@@ -34,10 +35,12 @@ export async function playLinesStep(ctx: PlayContext, step: SpinStep, roundBet: 
   audio.anticipationEnd();
   hud.hideBanner();
 
+  // Hold & Win: las monedas reciben su valor encima (no son multiplicadores).
+  if (ctx.holdBoard && step.mults) ctx.holdBoard.showBaseValues(step.mults, roundBet);
   // Wilds pegajosos: los nuevos se revelan DESPUÉS de que frenan los
   // rodillos, uno por uno. Es el momento del juego — ver qué multiplicador
   // te tocó — y merece su propio tiempo, no compartirlo con el giro.
-  if (step.mults) {
+  else if (step.mults) {
     const fresh = multLayer.sync(step.mults);
     if (fresh.length > 0) {
       // El más alto manda la intensidad del golpe.
@@ -54,7 +57,11 @@ export async function playLinesStep(ctx: PlayContext, step: SpinStep, roundBet: 
   if (step.scatterCells.length >= cfg.scattersToTrigger && step.kind === 'base') {
     audio.freeSpins();
     fx.shake(8);
-    if (!ctx.hasClimb) {
+    if (ctx.profile.hold) {
+      fx.announce('¡HOLD & WIN!', `${step.scatterCells.length} monedas · ${step.awarded} re-giros`, 1300);
+      fx.burst(45);
+      await ctx.wait(1500 * ctx.tf());
+    } else if (!ctx.hasClimb) {
       fx.announce('¡GIROS GRATIS!', `${step.awarded} giros · los wilds se quedan`, 1200);
       fx.burst(45);
       await ctx.wait(1500 * ctx.tf());

@@ -12,8 +12,11 @@ import { audio } from '../render/audio.ts';
 import type { PlayContext } from './context.ts';
 import { playClusterStep } from './step-cluster.ts';
 import { playLinesStep } from './step-lines.ts';
+import { playHoldStep } from './step-hold.ts';
 
-export function playStep(ctx: PlayContext, step: SpinStep, roundBet: number): Promise<void> {
+/** `prior` es lo ya ganado en la ronda antes de este paso (el cobro del Hold & Win cuenta desde ahí). */
+export function playStep(ctx: PlayContext, step: SpinStep, roundBet: number, prior = 0): Promise<void> {
+  if (ctx.profile.hold && step.hold) return playHoldStep(ctx, step, roundBet, prior);
   return ctx.profile.cluster ? playClusterStep(ctx, step, roundBet) : playLinesStep(ctx, step, roundBet);
 }
 
@@ -33,16 +36,19 @@ export async function playRound(
   multLayer.clear();
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i]!;
+    const prior = running;
     running += step.win;
     if (i <= from) continue; // ya visto antes de recargar la página
 
     // El primer giro gratis que se ve abre la función.
     if (step.kind === 'free' && (i === 0 || steps[i - 1]!.kind !== 'free' || i === from + 1)) {
-      if (await presentation.featureIntro(profile, step.freeTotal || 1)) session.skipRequested = false;
+      // En Hold & Win se anuncian los re-giros de la regla, no cuántos va a haber.
+      const spins = profile.hold ? profile.hold.respins : step.freeTotal || 1;
+      if (await presentation.featureIntro(profile, spins)) session.skipRequested = false;
       presentation.featureStart(profile);
     }
 
-    await playStep(ctx, step, roundBet);
+    await playStep(ctx, step, roundBet, prior);
 
     // Tras el giro que disparó viene la Escalinata: el bonus se gana dos
     // veces — primero el disparo, después la escalada.
@@ -77,6 +83,7 @@ export async function playRound(
   presentation.featureEnd();
   ctx.setFreeMode(false);
   multLayer.clear();
+  ctx.holdBoard?.clear();
   ctx.layout();
 }
 

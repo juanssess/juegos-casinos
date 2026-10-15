@@ -12,7 +12,7 @@
  */
 
 import type { Application, Graphics } from 'pixi.js';
-import type { GameManifest, Palette, RoundEngine, SlotGameDef, Timing } from '@casino/math';
+import type { GameManifest, HoldWinDef, Jackpots, Palette, RoundEngine, SlotGameDef, Timing } from '@casino/math';
 
 import type { SymbolTextures } from './render/symbols.ts';
 import { paintedArtFor, type PaintedArt } from './render/painted.ts';
@@ -70,6 +70,11 @@ export interface ClientGame {
   nearMiss?: string;
   /** Subtítulo del cartel de giros gratis en un juego de racimos. */
   freeIntro?: string;
+  /**
+   * Hold & Win: las reglas que el tablero y la tabla de pagos muestran. Su
+   * presencia es lo que cambia el giro gratis por el tablero de re-giros.
+   */
+  hold?: { trigger: number; respins: number; jackpots: Jackpots };
   /** Arte pintado (`packages/games/<id>/art/`), o `null` si el juego no tiene. */
   art: PaintedArt | null;
   /** Tinte del fondo pintado durante la función. */
@@ -99,6 +104,11 @@ function capOf(m: GameManifest): number | undefined {
   return cap !== undefined && Number.isFinite(cap) ? cap : undefined;
 }
 
+function holdOf(m: GameManifest): Pick<ClientGame, 'hold'> {
+  const h = (m.game as Partial<HoldWinDef>).holdWin;
+  return h ? { hold: { trigger: h.trigger, respins: h.respins, jackpots: h.jackpots } } : {};
+}
+
 function toClientGame(m: GameManifest, art: ClientSkin): ClientGame {
   const qa = m.qa?.passed ? m.qa : null;
   const c = m.client;
@@ -125,6 +135,7 @@ function toClientGame(m: GameManifest, art: ClientSkin): ClientGame {
     ...(c.nearMiss ? { nearMiss: c.nearMiss } : {}),
     ...(c.freeIntro ? { freeIntro: c.freeIntro } : {}),
     art: paintedArtFor(m.id),
+    ...holdOf(m),
     ...(c.featureTint !== undefined ? { featureTint: c.featureTint } : {}),
     ...(c.featureDetail ? { featureDetail: c.featureDetail } : {}),
   };

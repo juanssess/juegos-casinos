@@ -175,6 +175,13 @@ export interface SpinStep {
    */
   bombMult?: number;
   bombWin?: Credits;
+  /**
+   * Hold & Win: este paso es un re-giro. `mults` trae el valor de cada moneda
+   * fija (en veces la apuesta, 0 = celda vacía) y `grid` muestra la moneda
+   * donde hay una y -1 donde no. En el último re-giro, `collect` es lo
+   * cobrado (ya incluido en `win`) y `grand`, si se llenó la pantalla.
+   */
+  hold?: { left: number; fresh: number[]; collect?: Credits; grand?: Credits };
 }
 
 export interface RoundState {

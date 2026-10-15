@@ -23,6 +23,7 @@ import type { Fx } from '../render/fx.ts';
 import type { ClimbScene } from '../render/climb.ts';
 import type { MultLayer } from '../render/mults.ts';
 import type { Presentation } from '../presentation.ts';
+import type { HoldBoard } from '../render/hold-board.ts';
 
 export interface Session {
   turbo: boolean;
@@ -53,6 +54,8 @@ export interface PlayContext {
   fx: Fx;
   climbScene: ClimbScene;
   multLayer: MultLayer;
+  /** Tablero de Hold & Win; `null` en los juegos que no lo son. */
+  holdBoard: HoldBoard | null;
   freeCounter: Text;
   cascadaBadge: Text;
   presentation: Presentation;

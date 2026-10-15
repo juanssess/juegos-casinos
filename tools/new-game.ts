@@ -10,6 +10,7 @@
  *   pegajosos       5×5, 15 líneas y wilds que se quedan  → sebusca
  *   racimos         6×5, racimos con cascadas y escalera   → vendimia
  *   cualquier-lado  6×5, 8 iguales en cualquier lado y bombas → kiosco
+ *   hold-win        5×3, monedas que se quedan y re-giros      → feria
  *
  * Por qué COPIAR un juego entero y no partir de una plantilla vacía: el molde
  * es un juego que ya pasó el QA. El juego nuevo arranca jugable, con la
@@ -37,6 +38,7 @@ const MECHANICS: Record<string, string> = {
   pegajosos: 'sebusca',
   racimos: 'vendimia',
   'cualquier-lado': 'kiosco',
+  'hold-win': 'feria',
 };
 
 function arg(name: string): string | undefined {

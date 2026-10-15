@@ -15,7 +15,7 @@
  */
 
 import { Application, Container, FillGradient, Graphics, Text } from 'pixi.js';
-import { CryptoRng } from '@casino/math';
+import { CryptoRng, SYM } from '@casino/math';
 import type { RgsClient } from '@casino/protocol';
 import { RgsError, RGS_ERRORS } from '@casino/protocol';
 
@@ -30,6 +30,7 @@ import { Hud } from './render/hud.ts';
 import { Fx } from './render/fx.ts';
 import { ClimbScene } from './render/climb.ts';
 import { MultLayer } from './render/mults.ts';
+import { HoldBoard } from './render/hold-board.ts';
 import { audio } from './render/audio.ts';
 import { createPresentation } from './presentation.ts';
 import { paintedTextures } from './render/painted.ts';
@@ -153,6 +154,16 @@ async function main(): Promise<void> {
   // tienen; en el resto queda vacía y no cuesta nada.
   const multLayer = new MultLayer({ reels: cfg.reels, rows: cfg.rows, cellSize: CELL, gap: GAP });
   board.addChild(multLayer.view);
+
+  // Tablero de Hold & Win, encima de los rodillos y con su misma geometría.
+  const holdBoard = profile.hold
+    ? new HoldBoard({
+        reels: cfg.reels, rows: cfg.rows, cellSize: CELL, gap: GAP,
+        coin: textures.get(SYM.SCATTER)!, jackpots: profile.hold.jackpots,
+        valueColor: profile.valueColor ?? (() => PALETTE.win),
+      })
+    : null;
+  if (holdBoard) board.addChild(holdBoard.view);
 
   const fx = new Fx(boardW, boardH);
   board.addChild(fx.view);
@@ -364,6 +375,7 @@ async function main(): Promise<void> {
     fx,
     climbScene,
     multLayer,
+    holdBoard,
     freeCounter,
     cascadaBadge,
     presentation,
@@ -409,6 +421,7 @@ async function main(): Promise<void> {
     hud.update(dt);
     climbScene.update(dt);
     multLayer.update(dt);
+    holdBoard?.update(dt);
     fx.update(dt);
     board.position.set(fx.offsetX, fx.offsetY);
   }
@@ -509,6 +522,7 @@ async function main(): Promise<void> {
     boardH,
     cluster: profile.cluster === true,
     hasClimb: ctx.hasClimb,
+    hold: profile.hold,
   });
   board.addChild(infoModal);
 

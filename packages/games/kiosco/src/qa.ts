@@ -6,13 +6,13 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "897e521178a3660d",
+  "sourceHash": "c6626514ce942631",
   "rounds": 800000000,
   "targetRtp": 0.965,
-  "rtp": 0.9652048536770738,
+  "rtp": 0.9652048536770739,
   "rtpCi": 0.000921836370146931,
   "rtpBase": 0.570872247001224,
-  "rtpFeature": 0.39433260662499986,
+  "rtpFeature": 0.3943326066249999,
   "hitFrequency": 0.337964255,
   "triggerOneIn": 372.47918888931827,
   "freeSpinsPerTrigger": 10.794617768840347,
@@ -34,7 +34,7 @@ export const QA: QaSummary | null = {
   ],
   "ante": {
     "costX": 1.31,
-    "rtp": 0.9691905558238869,
+    "rtp": 0.969190555823887,
     "rtpCi": 0.0014195858097936491,
     "triggerOneIn": 183.18037771793885,
     "rounds": 400000000

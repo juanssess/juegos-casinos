@@ -6,13 +6,13 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "4626748b9384c362",
+  "sourceHash": "9bb4aab6a85e216c",
   "rounds": 800000000,
   "targetRtp": 0.965,
   "rtp": 0.9666453531052619,
   "rtpCi": 0.0006433906872936964,
-  "rtpBase": 0.6093841745672353,
-  "rtpFeature": 0.35726117856247225,
+  "rtpBase": 0.6093841745672351,
+  "rtpFeature": 0.3572611785624723,
   "hitFrequency": 0.2972896125,
   "triggerOneIn": 209.24857789435248,
   "freeSpinsPerTrigger": 10.299090762616904,
@@ -35,9 +35,9 @@ export const QA: QaSummary | null = {
       "variant": "dorada",
       "label": "Escalinata dorada",
       "priceX": 114,
-      "ev": 109.77915135001797,
-      "evCi": 0.17472975354201675,
-      "rtp": 0.9629750118422629,
+      "ev": 109.77915135001798,
+      "evCi": 0.17472975354201672,
+      "rtp": 0.962975011842263,
       "buys": 2000000
     },
     {
@@ -52,8 +52,8 @@ export const QA: QaSummary | null = {
   ],
   "ante": {
     "costX": 1.75,
-    "rtp": 0.9678749745645531,
-    "rtpCi": 0.0008889997832668162,
+    "rtp": 0.9678749745645535,
+    "rtpCi": 0.000888999783266816,
     "triggerOneIn": 68.86133479089825,
     "rounds": 400000000
   },

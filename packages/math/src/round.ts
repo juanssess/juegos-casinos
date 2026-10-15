@@ -17,6 +17,7 @@ import type { ClimbResult, Grid, SlotGameDef, SpinEval,
   BonusVariant,
 } from './types.ts';
 import type { Rng } from './rng.ts';
+import type { HoldRecord } from './holdwin.ts';
 import { createEvaluator, type Evaluator } from './evaluate.ts';
 
 /**
@@ -81,6 +82,8 @@ export interface SpinRecord {
    */
   bombMult?: number;
   bombWin?: number;
+  /** Hold & Win: un re-giro de la función (ver holdwin.ts). */
+  hold?: HoldRecord;
 }
 
 export interface RoundResult {

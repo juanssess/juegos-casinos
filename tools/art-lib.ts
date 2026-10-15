@@ -140,6 +140,34 @@ export function cutCell(
     if (y < h - 1) push(x, y + 1, i);
   }
 
+  // 1b. Los HUECOS cerrados (el triángulo de una A, el interior de una Q o
+  //     de un 0) no tocan el borde y el crecimiento no llega. Una zona de
+  //     blanco puro del tamaño de un hueco también es fondo; los brillos de
+  //     los objetos son mucho más chicos y quedan.
+  {
+    const isWhite = (i: number): boolean => {
+      const [r, g, b] = px(i % w, Math.floor(i / w));
+      return Math.min(r, g, b) >= 236 && Math.max(r, g, b) - Math.min(r, g, b) < 14;
+    };
+    const minArea = Math.max(60, Math.round(w * h * 0.002));
+    const seen = new Uint8Array(w * h);
+    for (let start = 0; start < w * h; start++) {
+      if (seen[start] || bg[start] || guard[start] || !isWhite(start)) continue;
+      const comp: number[] = [start];
+      seen[start] = 1;
+      for (let k = 0; k < comp.length; k++) {
+        const i = comp[k]!;
+        const x = i % w, y = Math.floor(i / w);
+        for (const j of [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, y > 0 ? i - w : -1, y < h - 1 ? i + w : -1]) {
+          if (j < 0 || seen[j] || bg[j] || guard[j] || !isWhite(j)) continue;
+          seen[j] = 1;
+          comp.push(j);
+        }
+      }
+      if (comp.length >= minArea) for (const i of comp) bg[i] = 1;
+    }
+  }
+
   // 2. El gris claro pegado al fondo también es fondo (sombra apenas teñida).
   for (let round = 0; round < 6; round++) {
     const grow: number[] = [];

@@ -9,7 +9,7 @@
 
 import { Container, Graphics, Sprite, Text } from 'pixi.js';
 import type { GameConfig } from '@casino/protocol';
-import { PAYING_SYMBOLS, SYMBOL_NAMES, TIER_LABELS, type SlotGameDef } from '@casino/math';
+import { PAYING_SYMBOLS, SYMBOL_NAMES, TIER_LABELS, type Jackpots, type SlotGameDef } from '@casino/math';
 
 import type { SymbolTextures } from '../render/symbols.ts';
 import { PALETTE } from '../render/theme.ts';
@@ -25,6 +25,8 @@ export function createPaytable(opts: {
   boardH: number;
   cluster: boolean;
   hasClimb: boolean;
+  /** Hold & Win: reglas y jackpots. */
+  hold?: { trigger: number; respins: number; jackpots: Jackpots } | undefined;
 }): Container {
   const { cfg, labels: SKIN, textures, boardW, boardH } = opts;
   const GAME = opts.game;
@@ -157,17 +159,27 @@ export function createPaytable(opts: {
   // Especiales y reglas.
   const rulesY = 26 + 3 * 64 + 6;
   sprite(0, 44, 4, rulesY);
-  const scatterName = opts.hasClimb ? 'Templo' : 'Dinamita';
+  const scatterName = opts.hold ? (SKIN[1] ?? 'Moneda') : opts.hasClimb ? 'Templo' : 'Dinamita';
   t(`Sustituye a todo menos a la ${scatterName}`, 54, rulesY + 12, 12, PALETTE.textDim);
 
   sprite(1, 44, boardW / 2, rulesY);
   const scatPays = cfg.scatterPaytable;
-  t(`3/4/5 en cualquier lado: ${scatPays[3]}×/${scatPays[4]}×/${scatPays[5]}× la apuesta · 3+ dan giros gratis`,
+  t(opts.hold
+    ? `Cada ${scatterName.toLowerCase()} trae un valor · ${opts.hold.trigger} o más arrancan el Hold & Win`
+    : `3/4/5 en cualquier lado: ${scatPays[3]}×/${scatPays[4]}×/${scatPays[5]}× la apuesta · 3+ dan giros gratis`,
     boardW / 2 + 50, rulesY + 12, 11, PALETTE.textDim);
 
-  // La sección de la feature cambia según el juego: escalinata o pegajosos.
+  // La sección de la feature cambia según el juego: Hold & Win, escalinata o pegajosos.
   const featY = rulesY + 54;
-  if (opts.hasClimb) {
+  if (opts.hold) {
+    const h = opts.hold;
+    const j = h.jackpots;
+    t('HOLD & WIN', 4, featY, 15, PALETTE.scatter);
+    t(`Las monedas quedan fijas y hay ${h.respins} re-giros. Cada moneda nueva los vuelve a ${h.respins}.`, 4, featY + 22, 12, PALETTE.text);
+    t(`Jackpots: MINI ${j.mini}× · MINOR ${j.minor}× · MAJOR ${j.major}× · GRAND ${j.grand.toLocaleString('es-AR')}× (llenar la pantalla)`,
+      4, featY + 42, 12, PALETTE.mult ?? PALETTE.win);
+    t('Al final se cobra la suma de todas las monedas. El valor está en veces tu apuesta.', 4, featY + 62, 11, PALETTE.textDim);
+  } else if (opts.hasClimb) {
     t('LA ESCALINATA', 4, featY, 15, PALETTE.scatter);
     t(cfg.climbTiers.map((tt, k) => `N${k + 1}: ${tt.spins}×${tt.multiplier}`).join('   '), 4, featY + 22, 12.5, PALETTE.text);
     const oddsTxt = cfg.climbAscendPerMil.map((o) => `${o / 10}%`).join(' → ');

@@ -19,6 +19,7 @@ npm run new-game -- --id feria --mechanic cualquier-lado --title "La Feria"
    | `pegajosos` | sebusca | 5×5, 15 líneas, wilds que se quedan con multiplicador |
    | `racimos` | vendimia | 6×5, racimos pegados, cascadas con escalera |
    | `cualquier-lado` | kiosco | 6×5, 8 iguales en cualquier lado, bombas |
+   | `hold-win` | feria | 5×3, 20 líneas, monedas que se quedan y re-giros; llenar la pantalla paga el Grand |
 
    Desde ese momento ya se juega en `npm run dev` → `?game=feria`, aparece en
    `sim`, `tune` y `qa`, y tiene sus pruebas de consistencia. No hay ningún
@@ -117,6 +118,10 @@ que es del casino (las pantallas de MCCinema y la atmósfera de Maverick).
 La compilación del casino reemplaza ese único módulo; el arte, los fondos y
 los ajustes visuales ya vienen en el juego.
 
-Lo que todavía es a mano en el casino: la entrada del catálogo, el banner,
-el tema de MCCinema y la portada (ver cómo se sumó El Kiosco en el commit
-87aa1f4 del casino).
+La compilación del casino también exporta el arte de cada juego al lobby
+(`assets/illustrated/provider/`, con un índice): la portada, el banner y la
+pantalla del bonus de un juego nuevo salen de ahí sin tocar código.
+
+Lo que todavía es a mano en el casino: la entrada del catálogo y del banner,
+los textos de MCCinema (`src/ui/cinema.js`) y del asistente, y el color de
+su pantalla del bonus (`cinema.css`). Ver cómo se sumó La Feria.
