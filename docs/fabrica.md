@@ -38,9 +38,26 @@ npm run new-game -- --id feria --mechanic cualquier-lado --title "La Feria"
    Pegar la tabla que propone en `index.ts`. Precios de compra y ante con
    `npm run buyprice` y `npm run sim -- --ante`.
 
-4. **El arte pintado** — atlas de símbolos y escena, con la receta de
-   `Casino (PRUEBA)/assets/illustrated/README.md`. Mientras no esté, el juego
-   usa el dibujo del molde (`apps/client/src/skins/feria.ts`).
+4. **El arte pintado** — todo lo que ve el jugador es ilustración pintada.
+   Primero la dirección de arte en `src/art.ts` (qué es cada símbolo, cómo
+   es la escena; en inglés). Después:
+
+   ```
+   npm run art -- prompts --game feria      los dos pedidos, con la receta de la casa
+   (Claude genera la hoja y la escena con el conector de Gamma)
+   npm run art -- cut --game feria --sheet hoja.jpg --scene escena.jpg
+   ```
+
+   `cut` guarda las fuentes en `art/source/`, recorta, arma `art/symbols.png`,
+   `art/scene.jpg` y `art/art.json`, y deja una vista de control para mirar
+   los bordes. Si un objeto tiene partes del color del fondo (el palito
+   blanco de un chupetín), se protegen con `--protect "celda:x,y x,y ..."` y
+   se repite con `npm run art -- recut`. Mientras tanto el juego usa el arte
+   del molde, marcado como provisorio, y no se publica.
+
+   El cliente carga ese arte solo, suelto y en el casino: no hay que tocar
+   nada más. El dibujo procedural de `apps/client/src/skins/` queda de
+   respaldo.
 
 5. **El QA** — la medición en serio, en todos los núcleos:
 
@@ -62,6 +79,7 @@ npm run new-game -- --id feria --mechanic cualquier-lado --title "La Feria"
    | Frecuencia de premio | aviso | 25 % a 35 % |
    | Frecuencia del bonus | aviso | 1 de cada 150 a 400 |
    | Tope de mercado | aviso | 5.000× a 25.000× |
+| Arte pintado propio | frena (en el portero) | atlas con todos los símbolos en juego, escena, no provisorio |
 
 6. **Al casino** — la compilación ilustrada del casino y `build:casino`
    corren antes `npm run qa:check`, que frena si algún juego no tiene QA,
@@ -78,20 +96,26 @@ packages/games/<id>/src/
   theme.ts      nombres, paleta, tiempos
   manifest.ts   todo lo anterior junto, más los textos del cliente
   qa.ts         lo escribe el QA; no se edita
+  art.ts        dirección de arte: qué es cada símbolo y la escena
+packages/games/<id>/art/
+  symbols.png, scene.jpg, art.json   el arte pintado que carga el cliente
+  source/       las imágenes generadas, para poder recortar de nuevo
 apps/client/src/
-  skins/<id>.ts         fábrica de símbolos y escenografía (lo único de Pixi)
+  skins/<id>.ts         dibujo procedural de respaldo (lo único de Pixi por juego)
+  render/painted.ts     carga el arte pintado del juego
   play/                 cómo se reproduce una ronda: líneas, racimos
   ui/                   mueble, menú de compra, tabla de pagos
-  presentation.ts       fondo y pantallas de la función (el casino trae la suya)
+  presentation-base.ts  fondo pintado y pantallas de la función
+  presentation.ts       el módulo que el casino reemplaza por el suyo
 ```
 
 ## El casino
 
-Su presentación propia (fondos pintados, MCCinema, atmósfera de Maverick)
-está en `Casino (PRUEBA)/tools/provider/presentation.ts` y cumple el
-contrato de `apps/client/src/presentation-types.ts`. La compilación del
-casino reemplaza ese módulo y los cuatro archivos de símbolos; no toca
-`main.ts`.
+Su presentación propia está en `Casino (PRUEBA)/tools/provider/presentation.ts`:
+se construye sobre `apps/client/src/presentation-base.ts` y agrega solo lo
+que es del casino (las pantallas de MCCinema y la atmósfera de Maverick).
+La compilación del casino reemplaza ese único módulo; el arte, los fondos y
+los ajustes visuales ya vienen en el juego.
 
 Lo que todavía es a mano en el casino: la entrada del catálogo, el banner,
 el tema de MCCinema y la portada (ver cómo se sumó El Kiosco en el commit

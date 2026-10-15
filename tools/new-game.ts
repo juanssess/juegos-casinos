@@ -72,7 +72,11 @@ function once(file: string, a: string | RegExp, b: string): void {
 }
 
 // 1. El paquete.
-cpSync(resolve(GAMES_DIR, from), dst, { recursive: true, filter: (p) => !p.includes('node_modules') });
+// Sin node_modules y sin las fuentes del arte del molde: esas son suyas.
+cpSync(resolve(GAMES_DIR, from), dst, {
+  recursive: true,
+  filter: (p) => !p.includes('node_modules') && !p.replaceAll('\\', '/').includes('/art/source'),
+});
 const pkgFile = resolve(dst, 'package.json');
 const pkg = JSON.parse(readFileSync(pkgFile, 'utf8')) as { name: string };
 pkg.name = `@casino/game-${id}`;
@@ -86,6 +90,17 @@ writeFileSync(resolve(dst, 'src/qa.ts'),
   `import type { QaSummary } from '@casino/math';\n\nexport const QA: QaSummary | null = null;\n`, 'utf8');
 // Un aviso arriba del index: que se sepa de dónde salió hasta que se rehaga.
 once(resolve(dst, 'src/index.ts'), /^\/\*\*/, `/**\n * NACIDO DE ${from.toUpperCase()} (npm run new-game). La matemática es la del molde\n * hasta que se cambien las tiras o la tabla y se vuelva a medir con el QA.\n *`);
+
+// El arte pintado del molde viaja marcado como PROVISORIO: el juego se ve
+// bien desde el primer minuto, pero el portero no lo publica así.
+const artJson = resolve(dst, 'art/art.json');
+if (existsSync(artJson)) {
+  const art = JSON.parse(readFileSync(artJson, 'utf8')) as Record<string, unknown>;
+  art.source = `molde:${from}`;
+  art.provisional = true;
+  delete art.cut;
+  writeFileSync(artJson, JSON.stringify(art, null, 2) + '\n', 'utf8');
+}
 
 // 2. El arte de cliente: el del molde, hasta que haya atlas pintado propio.
 const skinFile = resolve(ROOT, `apps/client/src/skins/${id}.ts`);
@@ -177,6 +192,8 @@ Lo que sigue:
   1. El tema: packages/games/${id}/src/theme.ts (nombres, paleta, tiempos).
   2. La matemática: tiras y objetivos en index.ts / tuning.ts, y
      npm run tune -- --game ${id} --rounds 1e8
-  3. El arte pintado: atlas y escena (receta en el README de assets/illustrated).
+  3. El arte pintado: escribir src/art.ts (qué es cada símbolo y la escena),
+     npm run art -- prompts --game ${id}   →  generar  →  npm run art -- cut ...
+     Mientras tanto usa el arte del molde, marcado como provisorio.
   4. npm run qa -- --game ${id}   — sin QA aprobado no entra al casino.
 `);

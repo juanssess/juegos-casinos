@@ -12,8 +12,12 @@
  * coseno — el truco más viejo del mundo y sigue funcionando.
  */
 
-import { Container, Graphics, Text } from 'pixi.js';
+import { Assets, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
+import coinUrl from './shared/coin.png?url';
+import coinEdgeUrl from './shared/coin-edge.png?url';
+import sparklesUrl from './shared/sparkles.png?url';
 import { PALETTE } from './theme.ts';
+import { reducedMotion } from './motion.ts';
 
 interface Coin {
   x: number;
@@ -27,15 +31,35 @@ interface Coin {
 }
 
 const COIN_LIFE = 1600;
+const SPARKLE_LIFE = 750;
+
+/**
+ * El arte compartido de las celebraciones: la moneda de la casa (de frente y
+ * de canto) y los destellos. Pintados, como todo lo que ve el jugador; si no
+ * cargan, las monedas se dibujan como antes.
+ */
+let ART: { coin: Texture; edge: Texture; sparkles: Texture } | null = null;
+
+interface Sparkle {
+  s: Sprite;
+  life: number;
+  size: number;
+}
 const GRAVITY = 1600 / 1000; // px/s² expresado por ms
 
 export class Fx {
   readonly view = new Container();
   #g = new Graphics();
   #coins: Coin[] = [];
+  /** Una moneda pintada por moneda viva; se reciclan. */
+  #coinLayer = new Container();
+  #coinSprites: Sprite[] = [];
+  #sparkles: Sparkle[] = [];
   #w: number;
   #h: number;
 
+  /** El cartel oscuro detrás del anuncio: sin él, el texto se pierde sobre los símbolos. */
+  #halo = new Graphics();
   #plaque: Text;
   #plaqueSub: Text;
   #plaqueT = -1;
@@ -50,6 +74,12 @@ export class Fx {
     this.#w = w;
     this.#h = h;
     this.view.addChild(this.#g);
+    this.view.addChild(this.#coinLayer);
+    this.#halo.roundRect(12, h / 2 - 90, w - 24, 150, 16).fill({ color: 0x080a10, alpha: 0.94 })
+      .stroke({ color: PALETTE.win, alpha: 0.85, width: 2 });
+    this.#halo.roundRect(19, h / 2 - 83, w - 38, 136, 12).stroke({ color: PALETTE.win, alpha: 0.22, width: 1 });
+    this.#halo.alpha = 0;
+    this.view.addChild(this.#halo);
 
     this.#plaque = new Text({
       text: '',
@@ -84,8 +114,32 @@ export class Fx {
     this.view.addChild(this.#plaque, this.#plaqueSub);
   }
 
+  /** Carga el arte compartido. Se llama una vez, antes de la primera celebración. */
+  static async preload(): Promise<void> {
+    try {
+      const [coin, edge, sparkles] = await Promise.all([
+        Assets.load<Texture>(coinUrl), Assets.load<Texture>(coinEdgeUrl), Assets.load<Texture>(sparklesUrl),
+      ]);
+      ART = { coin, edge, sparkles };
+    } catch {
+      ART = null; // sin arte, las monedas se dibujan
+    }
+  }
+
   /** Fuente de monedas desde el centro del tablero. */
   burst(n: number): void {
+    if (reducedMotion()) return;
+    // Destellos donde arranca la fuente: uno cada diez monedas, con techo.
+    if (ART) {
+      for (let i = 0; i < Math.min(8, Math.ceil(n / 10)); i++) {
+        const s = new Sprite(ART.sparkles);
+        s.anchor.set(0.5);
+        s.position.set(this.#w / 2 + (Math.random() - 0.5) * this.#w * 0.7, this.#h * (0.2 + Math.random() * 0.45));
+        s.rotation = Math.random() * Math.PI;
+        this.#coinLayer.addChild(s);
+        this.#sparkles.push({ s, life: SPARKLE_LIFE + Math.random() * 300, size: 26 + Math.random() * 30 });
+      }
+    }
     for (let i = 0; i < n && this.#coins.length < 160; i++) {
       const a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
       const speed = 350 + Math.random() * 550;
@@ -104,15 +158,60 @@ export class Fx {
 
   /** Sacudida de pantalla; decae sola. */
   shake(amp: number): void {
+    if (reducedMotion()) return;
     this.#shakeAmp = Math.max(this.#shakeAmp, amp);
   }
 
   /** Cartel central con entrada elástica, sostén y salida. */
   announce(main: string, sub: string, holdMs: number): void {
+    // El texto se achica para entrar en el cartel: "¡PREMIO GIGANTE!" no cabe al tamaño de "×9".
+    this.#plaque.style.fontSize = Math.min(54, (this.#w - 46) / (main.length * 0.68));
     this.#plaque.text = main;
     this.#plaqueSub.text = sub;
     this.#plaqueT = 0;
     this.#plaqueHold = holdMs;
+  }
+
+  /** Monedas dibujadas: el respaldo si el arte no cargó. */
+  #drawCoins(): void {
+    for (const c of this.#coins) {
+      const alpha = Math.min(1, c.life / 400);
+      const rx = Math.max(1.2, Math.abs(Math.cos(c.phase)) * c.r);
+      this.#g.ellipse(c.x, c.y, rx, c.r).fill({ color: PALETTE.win, alpha });
+      this.#g.ellipse(c.x, c.y, rx * 0.55, c.r * 0.55).fill({ color: 0xfff0c0, alpha: alpha * 0.8 });
+    }
+    if (this.#coins.length === 0) this.#g.clear();
+  }
+
+  /**
+   * Monedas pintadas que giran sobre su eje: de frente se ve la cara con el
+   * tigre, y cuando el giro las pone casi de perfil se cambia a la moneda de
+   * canto. Sin ese cambio, una moneda plana aplastada a lo ancho parece una
+   * línea; con él, tiene espesor.
+   */
+  #drawPaintedCoins(): void {
+    const art = ART!;
+    while (this.#coinSprites.length < this.#coins.length) {
+      const s = new Sprite(art.coin);
+      s.anchor.set(0.5);
+      this.#coinLayer.addChildAt(s, 0);
+      this.#coinSprites.push(s);
+    }
+    this.#coinSprites.forEach((s, i) => {
+      const c = this.#coins[i];
+      s.visible = c !== undefined;
+      if (!c) return;
+      // Más grandes que las dibujadas: a este tamaño se lee el tigre de la cara.
+      const size = c.r * 3.6;
+      const face = Math.cos(c.phase);
+      const edgeOn = Math.abs(face) < 0.32;
+      s.texture = edgeOn ? art.edge : art.coin;
+      s.height = size;
+      s.width = edgeOn ? size * 0.62 : size * Math.abs(face);
+      s.position.set(c.x, c.y);
+      s.rotation = c.vx * 0.0006;
+      s.alpha = Math.min(1, c.life / 400);
+    });
   }
 
   update(dtMs: number): void {
@@ -127,15 +226,29 @@ export class Fx {
         c.x += (c.vx * dtMs) / 1000;
         c.y += (c.vy * dtMs) / 1000;
         c.phase += (c.spin * dtMs) / 1000;
-
-        const alpha = Math.min(1, c.life / 400);
-        const rx = Math.max(1.2, Math.abs(Math.cos(c.phase)) * c.r);
-        this.#g.ellipse(c.x, c.y, rx, c.r).fill({ color: PALETTE.win, alpha });
-        this.#g.ellipse(c.x, c.y, rx * 0.55, c.r * 0.55).fill({ color: 0xfff0c0, alpha: alpha * 0.8 });
         next.push(c);
       }
       this.#coins = next;
-      if (next.length === 0) this.#g.clear();
+      if (ART) this.#drawPaintedCoins();
+      else this.#drawCoins();
+    }
+
+    // ── Destellos ──
+    if (this.#sparkles.length > 0) {
+      this.#sparkles = this.#sparkles.filter((p) => {
+        p.life -= dtMs;
+        if (p.life <= 0) {
+          p.s.destroy();
+          return false;
+        }
+        // Nace, brilla y se apaga: una campana de tamaño y opacidad.
+        const k = 1 - p.life / SPARKLE_LIFE;
+        const bell = Math.sin(Math.min(1, Math.max(0, k)) * Math.PI);
+        p.s.width = p.s.height = p.size * (0.4 + bell * 0.8);
+        p.s.alpha = bell;
+        p.s.rotation += dtMs * 0.0015;
+        return true;
+      });
     }
 
     // ── Cartel ──
@@ -158,6 +271,7 @@ export class Fx {
         scale = 1 + k * 0.08;
         if (k >= 1) this.#plaqueT = -1;
       }
+      this.#halo.alpha = alpha;
       this.#plaque.alpha = alpha;
       this.#plaque.scale.set(Math.max(0.01, scale));
       this.#plaqueSub.alpha = alpha;

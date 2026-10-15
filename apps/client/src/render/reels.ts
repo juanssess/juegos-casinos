@@ -21,6 +21,7 @@ import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { SYM, type SymbolId } from '@casino/math';
 import { PALETTE, TIMING } from './theme.ts';
 import type { SymbolTextures } from './symbols.ts';
+import { reducedMotion } from './motion.ts';
 
 /** Largo de la cinta virtual de cada rodillo. */
 const TAPE = 32;
@@ -317,7 +318,12 @@ export class ReelSet {
     // en vez de "de PowerPoint". Solo corre durante el giro, así que no pelea
     // con el resaltado de premios (que dimea y agranda estos mismos sprites).
     const spinning = reel.phase === 'spinning';
-    const stretch = spinning ? 1 + Math.min(0.32, reel.speed / 13000) : 1;
+    // Al frenar, el estiramiento se recoge de a poco en vez de cortarse de
+    // golpe: es lo que hace que el rodillo parezca tener peso.
+    const braking = reel.phase === 'stopping' ? Math.max(0, 1 - reel.t / reel.duration) : 0;
+    const stretch = reducedMotion()
+      ? 1
+      : spinning ? 1 + Math.min(0.22, reel.speed / 15000) : 1 + 0.14 * braking * braking;
     const alpha = spinning ? 0.88 : 1;
 
     for (let j = 0; j < rows + 2; j++) {

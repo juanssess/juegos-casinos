@@ -22,7 +22,7 @@ export interface Scenery {
 }
 
 export interface Presentation {
-  /** Suavizado del renderer. Con arte de mapa de bits conviene; con vectores, no. */
+  /** Suavizado del renderer. Con arte pintado (mapa de bits) conviene; con vectores, no. */
   antialias: boolean;
   /** Carga lo que haga falta ANTES de crear las texturas de los símbolos. */
   preload(): Promise<void>;

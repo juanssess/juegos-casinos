@@ -11,6 +11,7 @@ import { measureSebusca } from './measure.ts';
 import * as tuning from './tuning.ts';
 import * as theme from './theme.ts';
 import { QA } from './qa.ts';
+import { ART } from './art.ts';
 
 export const MANIFEST: GameManifest = {
   id: 'sebusca',
@@ -24,9 +25,12 @@ export const MANIFEST: GameManifest = {
   shape: tuning.SHAPE,
   theme,
   client: {
+    featureTint: 0xffbdaa,
+    featureDetail: 'Los wilds pegajosos acompañan la función.',
     betLevels: [15, 30, 75, 150, 300, 750, 1500],
     cellSize: 92,
     tagline: '15 líneas · wilds pegajosos · tope 10.000×',
   },
   qa: QA,
+  art: ART,
 };

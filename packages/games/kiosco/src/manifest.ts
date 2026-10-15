@@ -9,6 +9,7 @@ import { GAME } from './index.ts';
 import * as tuning from './tuning.ts';
 import * as theme from './theme.ts';
 import { QA } from './qa.ts';
+import { ART } from './art.ts';
 
 export const MANIFEST: GameManifest = {
   id: 'kiosco',
@@ -22,6 +23,8 @@ export const MANIFEST: GameManifest = {
   shape: tuning.SHAPE,
   theme,
   client: {
+    featureTint: 0xffc8e6,
+    featureDetail: 'Las bombas multiplican cada caída que paga.',
     betLevels: [20, 40, 100, 200, 400, 1000, 2000],
     cellSize: 86,
     tagline: '8 iguales en cualquier lado · bombas de hasta ×500 · tope 10.000×',
@@ -30,4 +33,5 @@ export const MANIFEST: GameManifest = {
     valueColor: theme.bombColor,
   },
   qa: QA,
+  art: ART,
 };

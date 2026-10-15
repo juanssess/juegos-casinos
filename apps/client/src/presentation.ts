@@ -11,7 +11,8 @@
  * orquestador rompía la compilación del casino. Ahora el contrato es este
  * archivo: el casino reemplaza el módulo entero por el suyo
  * (`Casino (PRUEBA)/tools/provider/presentation.ts`) y tiene que exportar
- * lo mismo: `createPresentation()`, que cumple `presentation-types.ts`. `main.ts` no sabe cuál de los dos le tocó.
+ * lo mismo: `createPresentation(profile)`, que cumple `presentation-types.ts`,
+ * y suele construirse sobre `presentation-base.ts`. `main.ts` no sabe cuál de los dos le tocó.
  *
  * Reglas de la interfaz:
  *  - Nada acá decide un resultado, cobra o paga. Solo muestra.
@@ -19,30 +20,13 @@
  *    orquestador las espera y sigue.
  */
 
-import { PALETTE } from './render/theme.ts';
+import type { ClientGame } from './games.ts';
 import type { Presentation } from './presentation-types.ts';
+import { createBasePresentation } from './presentation-base.ts';
 
 export type { Presentation, Scenery } from './presentation-types.ts';
 
-/** La presentación del juego suelto: escenografía procedural y nada más. */
-export function createPresentation(): Presentation {
-  return {
-    antialias: false,
-    async preload() {},
-    scenery(_app, profile) {
-      return {
-        layout(bg, w, h) {
-          bg.rect(0, 0, w, h).fill(PALETTE.bgBottom);
-          profile.backdrop(bg, w, h);
-        },
-        setFree() {},
-      };
-    },
-    async featureIntro() {
-      return false;
-    },
-    featureStart() {},
-    async featureSummary() {},
-    featureEnd() {},
-  };
+/** La presentación del juego suelto: la de base, sin nada encima. */
+export function createPresentation(profile: ClientGame): Presentation {
+  return createBasePresentation(profile);
 }

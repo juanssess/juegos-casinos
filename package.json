@@ -17,12 +17,14 @@
     "qa": "node tools/qa.ts",
     "qa:check": "node tools/qa-check.ts",
     "new-game": "node tools/new-game.ts",
+    "art": "node tools/art.ts",
     "dev": "npm run dev -w @casino/client",
     "build": "npm run build -w @casino/client",
     "build:casino": "node tools/build-casino.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "sharp": "^0.34.5",
     "typescript": "^5.7.0",
     "vite": "^8.2.2"
   },

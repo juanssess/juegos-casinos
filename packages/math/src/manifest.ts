@@ -78,6 +78,10 @@ export interface ClientSettings {
   freeIntro?: string;
   /** Juegos con BOMBAS: color de la etiqueta según el valor. */
   valueColor?: (v: number) => number;
+  /** Tinte del fondo pintado durante la función (se ilumina hacia este color). */
+  featureTint?: number;
+  /** Una frase sobre la función, para la pantalla de entrada del bonus. */
+  featureDetail?: string;
 }
 
 /** Un control del QA. Los `error` frenan la publicación; los `warn` no. */
@@ -133,6 +137,8 @@ interface ManifestBase {
   shape: Partial<Record<SymbolId, readonly number[]>>;
   /** `null` hasta que el juego pase por `npm run qa`. */
   qa: QaSummary | null;
+  /** Dirección de arte (`src/art.ts`). Los archivos están en `art/`. */
+  art: ArtDirection;
 }
 
 export interface LinesManifest extends ManifestBase {
@@ -148,3 +154,35 @@ export interface ClusterManifest extends ManifestBase {
 }
 
 export type GameManifest = LinesManifest | ClusterManifest;
+
+/**
+ * El arte pintado de un juego: lo que hay en `packages/games/<id>/art/`.
+ *
+ * `art.json` lo escribe `npm run art -- cut` y lo lee el cliente; la
+ * dirección de arte (qué es cada símbolo, cómo es la escena) la escribe una
+ * persona en `src/art.ts` y de ahí salen los pedidos para generar.
+ */
+export interface ArtFile {
+  /** Atlas de símbolos: grilla regular, celdas cuadradas. */
+  symbols: { file: string; cols: number; rows: number; cell: number; order: SymbolId[] };
+  /** Escena de fondo, cuadrada; el centro queda oscuro para el tablero. */
+  scene: string;
+  /** De dónde salió: 'gamma', 'casino' (migrado del casino) o 'molde:<id>'. */
+  source: string;
+  /** Arte prestado (del molde de new-game): se juega, pero no se publica. */
+  provisional: boolean;
+  date: string;
+  /**
+   * Cómo se recortó la hoja de `art/source/`, para poder repetirlo
+   * (`npm run art -- recut`): grilla de la hoja, celda → símbolo y las zonas
+   * protegidas por celda (lo que es objeto aunque tenga el color del fondo).
+   */
+  cut?: { cols: number; rows: number; cells: SymbolId[]; protect: Record<number, [number, number][]> };
+}
+
+export interface ArtDirection {
+  /** Qué es cada símbolo, en inglés (el generador entiende mejor). */
+  symbols: Partial<Record<SymbolId, string>>;
+  /** La escena de fondo. */
+  scene: string;
+}

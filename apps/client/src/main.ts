@@ -32,6 +32,7 @@ import { ClimbScene } from './render/climb.ts';
 import { MultLayer } from './render/mults.ts';
 import { audio } from './render/audio.ts';
 import { createPresentation } from './presentation.ts';
+import { paintedTextures } from './render/painted.ts';
 import { drawFrame } from './ui/frame.ts';
 import { createBuyMenu } from './ui/buy-menu.ts';
 import { createPaytable } from './ui/paytable.ts';
@@ -50,7 +51,7 @@ async function main(): Promise<void> {
   setActiveTheme(profile.palette, profile.timing);
   document.title = TITLE;
 
-  const presentation = createPresentation();
+  const presentation = createPresentation(profile);
   const app = new Application();
   await app.init({
     background: PALETTE.bgBottom,
@@ -91,8 +92,10 @@ async function main(): Promise<void> {
   const auth = await rgs.authenticate({ token: 'local', gameId: GAME.id });
   const cfg = auth.config;
 
-  await presentation.preload();
-  const textures = profile.textures(app);
+  await Promise.all([presentation.preload(), Fx.preload()]);
+  // El arte pintado manda; el dibujo procedural cubre lo que el atlas no trae.
+  const procedural = profile.textures(app);
+  const textures = profile.art ? await paintedTextures(app, profile.art, procedural) : procedural;
 
   // ── Escena ───────────────────────────────────────────────────────────────
   // El fondo va fuera del contenedor escalado: cubre la pantalla y nada más.
@@ -582,6 +585,8 @@ async function main(): Promise<void> {
          * motor del perfil (síncrono, sin RGS ni saldo) y la reproduce.
          */
         async demoFeature(maxTries = 5000) {
+          // Con una ronda en curso (o retomándose) no se arranca otra encima.
+          if (busyState.value) return { tries: 0, steps: 0, win: 0, busy: true };
           const demoEngine = profile.engine();
           const rng = new CryptoRng();
           const demoBet = BET_LEVELS[0]!;

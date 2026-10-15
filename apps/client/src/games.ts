@@ -15,6 +15,7 @@ import type { Application, Graphics } from 'pixi.js';
 import type { GameManifest, Palette, RoundEngine, SlotGameDef, Timing } from '@casino/math';
 
 import type { SymbolTextures } from './render/symbols.ts';
+import { paintedArtFor, type PaintedArt } from './render/painted.ts';
 
 /** Lo que cada juego aporta de dibujo: `apps/client/src/skins/<id>.ts`. */
 export interface ClientSkin {
@@ -69,6 +70,12 @@ export interface ClientGame {
   nearMiss?: string;
   /** Subtítulo del cartel de giros gratis en un juego de racimos. */
   freeIntro?: string;
+  /** Arte pintado (`packages/games/<id>/art/`), o `null` si el juego no tiene. */
+  art: PaintedArt | null;
+  /** Tinte del fondo pintado durante la función. */
+  featureTint?: number;
+  /** Una frase sobre la función, para la pantalla de entrada del bonus. */
+  featureDetail?: string;
 }
 
 const MANIFESTS = import.meta.glob<{ MANIFEST: GameManifest }>(
@@ -117,6 +124,9 @@ function toClientGame(m: GameManifest, art: ClientSkin): ClientGame {
     ...(c.valueColor ? { valueColor: c.valueColor } : {}),
     ...(c.nearMiss ? { nearMiss: c.nearMiss } : {}),
     ...(c.freeIntro ? { freeIntro: c.freeIntro } : {}),
+    art: paintedArtFor(m.id),
+    ...(c.featureTint !== undefined ? { featureTint: c.featureTint } : {}),
+    ...(c.featureDetail ? { featureDetail: c.featureDetail } : {}),
   };
 }
 

@@ -36,6 +36,7 @@ import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import { SYM, type SymbolId } from '@casino/math';
 import { PALETTE, TIMING } from './theme.ts';
 import type { SymbolTextures } from './symbols.ts';
+import { reducedMotion } from './motion.ts';
 
 /** Los mismos eventos que emite ReelSet, para que el orquestador no cambie. */
 export interface SpinEvents {
@@ -557,6 +558,12 @@ export class ClusterBoard {
            aparece de golpe ya puesto. Se veia como un tablero medio vacio. */
         a.s.width = cellSize;
         a.s.height = cellSize;
+        // El último tramo de la caída aplasta apenas el símbolo: aterriza, no aparece.
+        if (!reducedMotion() && k > 0.8) {
+          const landing = Math.sin(((k - 0.8) / 0.2) * Math.PI) * 0.055;
+          a.s.width = cellSize * (1 + landing);
+          a.s.height = cellSize * (1 - landing);
+        }
         if (k >= 1) a.s.y = a.toY;
       }
 

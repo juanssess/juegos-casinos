@@ -9,6 +9,7 @@ import { GAME } from './index.ts';
 import * as tuning from './tuning.ts';
 import * as theme from './theme.ts';
 import { QA } from './qa.ts';
+import { ART } from './art.ts';
 
 export const MANIFEST: GameManifest = {
   id: 'classic20',
@@ -22,9 +23,12 @@ export const MANIFEST: GameManifest = {
   shape: tuning.SHAPE,
   theme,
   client: {
+    featureTint: 0xa9ffe0,
+    featureDetail: 'La Escalinata decidió tu bonus.',
     betLevels: [20, 40, 100, 200, 400, 1000, 2000],
     cellSize: 116,
     tagline: '20 líneas · La Escalinata',
   },
   qa: QA,
+  art: ART,
 };
