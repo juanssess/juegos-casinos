@@ -11,7 +11,8 @@
  * Un juego sin arte pintado usa su escenografía procedural.
  */
 
-import { Assets, Sprite, Texture } from 'pixi.js';
+import { Assets, Sprite, Texture, type Application } from 'pixi.js';
+import { mountStoryScene, preloadStoryScene } from './scenes/noir-survival.ts';
 
 import type { ClientGame } from './games.ts';
 import type { Presentation, Scenery } from './presentation-types.ts';
@@ -31,22 +32,25 @@ function proceduralScenery(profile: ClientGame): Scenery {
 }
 
 /** La escena pintada, como sprite debajo de todo. Expone el sprite para quien la extienda. */
-export function paintedScenery(app: { stage: { addChild(s: Sprite): unknown } }, profile: ClientGame): Scenery & { sprite: Sprite } {
+export function paintedScenery(app: Application, profile: ClientGame): Scenery & { sprite: Sprite } {
   const sprite = new Sprite(Texture.from(profile.art!.sceneUrl));
   sprite.alpha = DIM;
   app.stage.addChild(sprite);
+  const story = mountStoryScene(app, profile.id, sprite);
   return {
     sprite,
     layout(_bg, w, h) {
       // Cubre la pantalla sin deformar: la escena se recorta, no se estira.
-      const s = Math.max(w / sprite.texture.width, h / sprite.texture.height);
+      const s = Math.max(w / sprite.texture.width, h / sprite.texture.height) * (story ? 1.025 : 1);
       sprite.scale.set(s);
       sprite.position.set((w - sprite.width) / 2, (h - sprite.height) / 2);
+      story?.layout(w, h);
     },
     setFree(free) {
       // El fondo se ilumina en la función; el tablero conserva su contraste.
       sprite.alpha = free ? 1 : DIM;
       sprite.tint = free ? (profile.featureTint ?? 0xffffff) : 0xffffff;
+      story?.setFree(free);
     },
   };
 }
@@ -56,6 +60,7 @@ export function createBasePresentation(profile: ClientGame): Presentation {
     antialias: profile.art !== null,
     async preload() {
       if (profile.art) await Assets.load([profile.art.sceneUrl, profile.art.symbolsUrl]);
+      await preloadStoryScene(profile.id);
     },
     scenery(app, p) {
       return p.art ? paintedScenery(app, p) : proceduralScenery(p);

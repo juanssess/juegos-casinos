@@ -24,8 +24,10 @@ import { publishBlocker } from './qa-lib.ts';
 const out = resolve(process.argv[2] ?? die('Falta la carpeta destino.'));
 mkdirSync(out, { recursive: true });
 
+const only = process.argv.slice(3).find((a) => a.startsWith('--only='))?.slice(7).split(',');
 const index: Record<string, unknown> = {};
 for (const id of gameIds()) {
+  if (only && !only.includes(id)) continue;
   const dir = resolve(GAMES_DIR, id, 'art');
   const jsonFile = resolve(dir, 'art.json');
   if (!existsSync(jsonFile)) continue;

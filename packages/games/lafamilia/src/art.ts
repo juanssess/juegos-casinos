@@ -1,0 +1,2 @@
+import type { ArtDirection } from '@casino/math';
+export const ART: ArtDirection = { symbols: { "0": "Sello de la familia", "1": "Bolsa del golpe", "2": "Caja fuerte", "3": "Sombrero", "4": "Thompson", "5": "Whisky", "6": "Reloj", "7": "Libro de cuentas", "8": "Auto clásico", "9": "Rosa", "10": "Fichas" }, scene: "1930s clandestine mafia jazz club, burgundy velvet, brass lamps and vault. Separately animated suited gangster." };

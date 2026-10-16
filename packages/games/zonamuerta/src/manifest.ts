@@ -1,0 +1,36 @@
+/**
+ * Manifest de vendimia: lo que las herramientas y el cliente necesitan saber del
+ * juego. Se descubre solo (ver `@casino/math` → manifest.ts); no hay registro
+ * que tocar a mano.
+ */
+
+import { createClusterEngine, measureCluster, type ClusterManifest } from '@casino/math';
+import { GAME } from './index.ts';
+import * as tuning from './tuning.ts';
+import * as theme from './theme.ts';
+import { QA } from './qa.ts';
+import { ART } from './art.ts';
+
+export const MANIFEST: ClusterManifest = {
+  id: 'zonamuerta',
+  kind: 'cluster',
+  game: GAME,
+  engine: () => createClusterEngine(GAME),
+  measure: (opts) => measureCluster(GAME, opts),
+  targetRtp: tuning.TARGET_RTP,
+  bonusBuyX: tuning.BONUS_BUY_X,
+  shares: tuning.SHARES,
+  shape: tuning.SHAPE,
+  theme,
+  client: {
+    featureTint: 0xc2edc4,
+    featureDetail: 'Resistí la última noche: las cascadas suben la defensa y el multiplicador.',
+    betLevels: [20, 40, 100, 200, 400, 1000, 2000],
+    cellSize: 86,
+    tagline: '5 conectados · cascadas · refugios de la última noche',
+    nearMiss: 'una radio más para pedir rescate',
+    freeIntro: 'la defensa se mantiene durante toda la noche',
+  },
+  qa: QA,
+  art: ART,
+};
