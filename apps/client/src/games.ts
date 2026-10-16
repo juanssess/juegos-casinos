@@ -87,6 +87,8 @@ export interface ClientGame {
   featureTint?: number;
   /** Una frase sobre la función, para la pantalla de entrada del bonus. */
   featureDetail?: string;
+  /** Nombre de la escalera de las cascadas ("MARCHA ×4"). */
+  ladderLabel?: string;
 }
 
 const MANIFESTS = import.meta.glob<{ MANIFEST: GameManifest }>(
@@ -145,6 +147,7 @@ function toClientGame(m: SlotManifest, art: ClientSkin): ClientGame {
     ...holdOf(m),
     ...(c.featureTint !== undefined ? { featureTint: c.featureTint } : {}),
     ...(c.featureDetail ? { featureDetail: c.featureDetail } : {}),
+    ...('ladderLabel' in c && c.ladderLabel ? { ladderLabel: c.ladderLabel } : {}),
   };
 }
 

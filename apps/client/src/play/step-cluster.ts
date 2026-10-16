@@ -85,7 +85,7 @@ export async function playClusterStep(ctx: PlayContext, step: SpinStep, roundBet
       continue;
     }
 
-    cascadaBadge.text = `×${e.multiplier}`;
+    cascadaBadge.text = `${profile.ladderLabel ? profile.ladderLabel + ' ' : ''}×${e.multiplier}`;
     cascadaBadge.visible = e.multiplier > 1;
 
     let sub = 0;

@@ -30,6 +30,7 @@ export const MANIFEST: GameManifest = {
     tagline: 'hasta 117.649 caminos · cascadas · tope 5.000×',
     nearMiss: 'una medalla más',
     freeIntro: 'cada cascada sube la marcha (+1)',
+    ladderLabel: 'MARCHA',
   },
   qa: QA,
   art: ART,

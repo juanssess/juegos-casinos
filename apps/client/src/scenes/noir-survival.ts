@@ -92,7 +92,7 @@ export function mountStoryScene(app: Application, id: string, background: Sprite
         background.position.set(bx + (calm ? 0 : Math.sin(t * .13) * 3 + pointer.x * 2), by + (calm ? 0 : Math.cos(t * .1) * 2 + pointer.y));
         for (const [i, a] of actors.entries()) {
             const offset = zone ? (a.name === 'zombie' ? 3.1 : 0) : 1.2, period = zone && free ? 3.7 : 6.4, phase = calm ? 0 : (t + offset) / period;
-            const at = Math.floor(phase) % pattern.length, next = (at + 1) % pattern.length, blend = calm ? 0 : Math.max(0, ((phase % 1) - .94) / .06);
+            const at = Math.floor(phase) % pattern.length, next = (at + 1) % pattern.length, cross = calm ? 0 : Math.max(0, ((phase % 1) - .84) / .16), blend = cross * cross * (3 - 2 * cross);
             a.pose = !zone && free && frenzy > 0 && !calm ? 2 : pattern[at]!;
             a.front.texture = a.frames[a.pose]!;
             a.back.texture = a.frames[pattern[next]!]!;

@@ -14,6 +14,7 @@
 import { Assets, Sprite, Texture, type Application } from 'pixi.js';
 import { mountStoryScene, preloadStoryScene } from './scenes/noir-survival.ts';
 import { mountWaterfalls } from './scenes/waterfalls.ts';
+import { mountAmbient } from './scenes/ambient.ts';
 
 import type { ClientGame } from './games.ts';
 import type { Presentation, Scenery } from './presentation-types.ts';
@@ -40,6 +41,8 @@ export function paintedScenery(app: Application, profile: ClientGame): Scenery &
   const story = mountStoryScene(app, profile.id, sprite);
   // Agua que cae sobre la pintura (Las Cataratas); null en los demás juegos.
   const water = mountWaterfalls(app, profile.id, sprite);
+  // Arena, polvo y motas en el aire (Las Dunas, El Gran Premio).
+  const ambient = mountAmbient(app, profile.id, sprite);
   return {
     sprite,
     layout(_bg, w, h) {
@@ -49,6 +52,7 @@ export function paintedScenery(app: Application, profile: ClientGame): Scenery &
       sprite.position.set((w - sprite.width) / 2, (h - sprite.height) / 2);
       story?.layout(w, h);
       water?.layout();
+      ambient?.layout();
     },
     setFree(free) {
       // El fondo se ilumina en la función; el tablero conserva su contraste.
@@ -56,6 +60,7 @@ export function paintedScenery(app: Application, profile: ClientGame): Scenery &
       sprite.tint = free ? (profile.featureTint ?? 0xffffff) : 0xffffff;
       story?.setFree(free);
       water?.setFree(free);
+      ambient?.setFree(free);
     },
   };
 }

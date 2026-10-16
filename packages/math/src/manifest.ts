@@ -83,6 +83,8 @@ export interface ClientSettings {
   featureTint?: number;
   /** Una frase sobre la función, para la pantalla de entrada del bonus. */
   featureDetail?: string;
+  /** Cómo se llama la escalera de las cascadas en este juego ("MARCHA"): va delante del ×N. */
+  ladderLabel?: string;
 }
 
 /** Un control del QA. Los `error` frenan la publicación; los `warn` no. */
