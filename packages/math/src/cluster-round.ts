@@ -66,10 +66,12 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
   const cells = game.reels * game.rows;
   const divisor = game.betDivisor ?? 20;
   const ladder = game.cascadeMults;
+  /** La escalera del juego base: la misma de la función, salvo que el juego diga otra. */
+  const baseLadder = game.baseCascadeMults ?? ladder;
 
   /** Multiplicador del escalón `i`, aplanado en el último. */
-  const multAt = (i: number): number =>
-    ladder[i < ladder.length ? i : ladder.length - 1] ?? 1;
+  const multAt = (i: number, lad: readonly number[] = ladder): number =>
+    lad[i < lad.length ? i : lad.length - 1] ?? 1;
 
   /** Primer escalón cuyo multiplicador llega a `m`. Para las variantes de compra. */
   function rungFor(m: number): number {
@@ -124,6 +126,8 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     /* Multiplicador acumulado ANTES de esta secuencia, o -1 si el juego no
        acumula: ahí la secuencia se multiplica solo por sus propias bombas. */
     accBefore = -1,
+    /** La escalera de esta secuencia: la del juego base o la de la función. */
+    lad: readonly number[] = ladder,
   ): { win: number; rung: number; capped: boolean; bombs: number; bombMult: number; bombWin: number } {
     let win = 0;
     let capped = false;
@@ -136,7 +140,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
 
     for (;;) {
       const list = ev.clusters(grid);
-      const mult = multAt(rung);
+      const mult = multAt(rung, lad);
 
       if (list.length === 0) {
         if (n === 0 && detail) {
@@ -163,7 +167,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
       }
 
       let step = 0;
-      for (const c of list) step += ev.payOf(c.symbol, c.size) * coin * mult;
+      for (const c of list) step += ev.payOf(c.symbol, c.size) * (c.ways ?? 1) * coin * mult;
       if (step > 0 && win + step >= stepRoom) {
         step = stepRoom - win;
         capped = true;
@@ -256,7 +260,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     const baseMults = baseVals ? Array.from(baseVals.cells) : null;
     const tumbles: TumbleRecord[] = [];
     const first: { value: SpinEval | null; multiplier: number } = { value: null, multiplier: 1 };
-    const run = cascade(grid, strips, feed, coin, 0, cap - scatterWin, tumbles, first, baseVals);
+    const run = cascade(grid, strips, feed, coin, 0, cap - scatterWin, tumbles, first, baseVals, -1, baseLadder);
 
     const baseEval =
       first.value ?? clustersToEval(ev, [], coin, first.multiplier, scatterCount, scatterWin);
@@ -361,7 +365,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     const triggered = sc >= game.scattersToTrigger;
 
     const nada = { value: null as SpinEval | null, multiplier: 1 };
-    const run = cascade(fastGrid, strips, fastFeed, coin, 0, cap - scatterWin, null, nada, baseVals);
+    const run = cascade(fastGrid, strips, fastFeed, coin, 0, cap - scatterWin, null, nada, baseVals, -1, baseLadder);
     const baseWin = scatterWin + run.win;
 
     let featureWin = 0;

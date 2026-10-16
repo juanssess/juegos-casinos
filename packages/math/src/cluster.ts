@@ -105,8 +105,25 @@ export interface ClusterGameDef extends SlotGameDef {
    *  - `anywhere`: "scatter pays" — cuenta TODAS las celdas de un símbolo en
    *    la grilla, estén donde estén. No hay wild; el slot `SYM.WILD` queda
    *    libre y lo usa la BOMBA multiplicadora (ver `bombValues`).
+   *  - `ways`: CAMINOS con columnas de altura variable (ver `heightWeights`).
+   *    Paga un símbolo que aparece en columnas seguidas desde la primera; el
+   *    premio de la tabla se multiplica por la cantidad de caminos, que es el
+   *    producto de cuántas veces está en cada columna. El wild sustituye.
    */
-  payMode?: 'connected' | 'anywhere';
+  payMode?: 'connected' | 'anywhere' | 'ways';
+  /**
+   * Solo en `ways`: cuántos símbolos muestra cada columna en cada caída,
+   * como pares [altura, peso]. La altura se sortea por columna ANTES de su
+   * parada, y la grilla se guarda con `rows` = la altura máxima: lo que
+   * sobra arriba de la columna queda vacío (`VOID`). Con seis columnas de
+   * hasta siete, el máximo es 7^6 = 117.649 caminos.
+   */
+  heightWeights?: readonly (readonly [number, number])[];
+  /**
+   * La escalera del juego BASE, si es distinta de la de la función. En un
+   * juego de caminos la base no multiplica y la función suma uno por cascada.
+   */
+  baseCascadeMults?: readonly number[];
   /** Mínimo de celdas para pagar. Default `MIN_CLUSTER`. */
   minSize?: number;
   /** Tramos de la tabla de pagos. Default `CLUSTER_TIERS`. */
@@ -148,9 +165,15 @@ export interface ClusterGameDef extends SlotGameDef {
 /** Un racimo ganador. */
 export interface Cluster {
   symbol: SymbolId;
+  /** Celdas del racimo; en `ways`, la cantidad de COLUMNAS seguidas. */
   size: number;
   cells: number[];
+  /** Solo en `ways`: cuántos caminos forma (el premio se multiplica por esto). */
+  ways?: number;
 }
+
+/** Celda vacía de una grilla de caminos: arriba de una columna más baja que el máximo. */
+export const VOID = -1;
 
 /** Una cascada: la grilla que quedó, lo que pagó y con qué multiplicador. */
 export interface TumbleRecord {
@@ -203,6 +226,23 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
   const tiers = game.tiers ?? CLUSTER_TIERS;
   const minSize = game.minSize ?? MIN_CLUSTER;
   const anywhere = game.payMode === 'anywhere';
+  const waysMode = game.payMode === 'ways';
+
+  /* Altura de cada columna en la caída en curso. Fuera de `ways` es siempre
+     `rows` y el resto del código no se entera. */
+  const heights = new Int8Array(reels).fill(rows);
+  const hw = game.heightWeights ?? [];
+  if (waysMode && hw.length === 0) throw new Error(`${game.id}: un juego de caminos necesita heightWeights`);
+  const hwTotal = hw.reduce((a, [, w]) => a + w, 0);
+  /** Sortea la altura de una columna. Un solo sorteo entero, como las paradas. */
+  function pickHeight(rng: Rng): number {
+    let x = rng.nextInt(hwTotal);
+    for (const [h, w] of hw) {
+      if (x < w) return h;
+      x -= w;
+    }
+    return hw[hw.length - 1]![0];
+  }
 
   // Tabla de vecinos precalculada. Recalcular los cuatro vecinos con ifs
   // dentro del BFS es el costo dominante cuando esto corre 10^8 veces.
@@ -264,7 +304,42 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
     return found;
   }
 
+  /* CAMINOS. Un símbolo paga si está en la primera columna y en las que
+     siguen sin saltear ninguna; el premio se multiplica por el producto de
+     cuántas veces aparece (él o el wild) en cada una. Candidatos son solo
+     los símbolos de la primera columna, que nunca trae wild. */
+  const tried = new Int32Array(16);
+  let triedStamp = 0;
+  function waysGroups(grid: Grid): readonly Cluster[] {
+    found.length = 0;
+    triedStamp++;
+    for (let row = rows - heights[0]!; row < rows; row++) {
+      const sym = grid[row]!;
+      if (sym < 0 || sym === SYM.WILD || sym === SYM.SCATTER || tried[sym] === triedStamp) continue;
+      tried[sym] = triedStamp;
+      let ways = 1;
+      let k = 0;
+      const group: number[] = [];
+      for (let r = 0; r < reels; r++) {
+        let n = 0;
+        for (let rr = rows - heights[r]!; rr < rows; rr++) {
+          const g = grid[r * rows + rr]!;
+          if (g === sym || g === SYM.WILD) {
+            n++;
+            group.push(r * rows + rr);
+          }
+        }
+        if (n === 0) break;
+        ways *= n;
+        k++;
+      }
+      if (k >= minSize) found.push({ symbol: sym, size: k, cells: group, ways });
+    }
+    return found;
+  }
+
   function clusters(grid: Grid): readonly Cluster[] {
+    if (waysMode) return waysGroups(grid);
     if (anywhere) return anywhereGroups(grid);
     found.length = 0;
     done.fill(0);
@@ -321,13 +396,19 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
     for (let r = 0; r < reels; r++) {
       const strip = strips[r]!;
       const len = strip.length;
+      // En `ways`, primero la altura y después la parada: ese es el orden de sorteos.
+      const h = waysMode ? pickHeight(rng) : rows;
+      heights[r] = h;
+      const top = rows - h;
       const stop = rng.nextInt(len);
       stops[r] = stop;
       const base = r * rows;
-      for (let row = 0; row < rows; row++) out[base + row] = strip[(stop + row) % len]!;
+      for (let row = 0; row < top; row++) out[base + row] = VOID;
+      for (let row = top; row < rows; row++) out[base + row] = strip[(stop + row - top) % len]!;
       if (values) {
         const vs = values.strips[r]!;
-        for (let row = 0; row < rows; row++) values.cells[base + row] = vs[(stop + row) % len]!;
+        for (let row = 0; row < top; row++) values.cells[base + row] = 0;
+        for (let row = top; row < rows; row++) values.cells[base + row] = vs[(stop + row - top) % len]!;
       }
       // Lo próximo que caiga en esta columna es lo que estaba justo arriba
       // de la parada. Desde acá se camina la tira hacia atrás.
@@ -344,19 +425,20 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
   ): void {
     for (let r = 0; r < reels; r++) {
       const base = r * rows;
+      // Arriba de `top` la columna no existe (juegos de caminos): ni cae ni se llena.
+      const top = rows - heights[r]!;
 
       // Compactamos hacia abajo lo que sobrevive. Los valores (bombas) bajan
       // pegados a su celda.
       let write = rows - 1;
-      for (let row = rows - 1; row >= 0; row--) {
+      for (let row = rows - 1; row >= top; row--) {
         if (!remove[base + row]) {
           if (values) colVals[write] = values.cells[base + row]!;
           column[write--] = grid[base + row]!;
         }
       }
 
-      const nuevos = write + 1;
-      if (nuevos === 0) continue;
+      if (write < top) continue;
 
       // Y llenamos los huecos de arriba. El primero que entra es el que
       // estaba más cerca, y por eso cae MÁS ABAJO de los nuevos.
@@ -364,15 +446,15 @@ export function createClusterEvaluator(game: ClusterGameDef): ClusterEvaluator {
       const vs = values ? values.strips[r]! : null;
       const len = strip.length;
       let f = feed[r]!;
-      for (let row = nuevos - 1; row >= 0; row--) {
+      for (let row = write; row >= top; row--) {
         column[row] = strip[f]!;
         if (vs) colVals[row] = vs[f]!;
         f = (f - 1 + len) % len;
       }
       feed[r] = f;
 
-      for (let row = 0; row < rows; row++) grid[base + row] = column[row]!;
-      if (values) for (let row = 0; row < rows; row++) values.cells[base + row] = colVals[row]!;
+      for (let row = top; row < rows; row++) grid[base + row] = column[row]!;
+      if (values) for (let row = top; row < rows; row++) values.cells[base + row] = colVals[row]!;
     }
   }
 
@@ -412,7 +494,7 @@ export function clustersToEval(
     symbol: c.symbol,
     count: c.size,
     mult: multiplier,
-    amount: ev.payOf(c.symbol, c.size) * coin * multiplier,
+    amount: ev.payOf(c.symbol, c.size) * (c.ways ?? 1) * coin * multiplier,
     cells: c.cells.slice(),
   }));
   lineWins.sort((a, b) => b.amount - a.amount);

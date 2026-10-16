@@ -21,6 +21,10 @@ npm run new-game -- --id feria --mechanic cualquier-lado --title "La Feria"
    | `cualquier-lado` | kiosco | 6×5, 8 iguales en cualquier lado, bombas |
    | `acumulados` | carnaval | 6×5, 8 iguales en cualquier lado, multiplicadores en la base y que se acumulan en la función |
    | `hold-win` | feria | 5×3, 20 líneas, monedas que se quedan y re-giros; llenar la pantalla paga el Grand |
+   | `caminos` | cataratas | 6 columnas de 2 a 7 símbolos, hasta 117.649 caminos, cascadas; en la función cada cascada suma uno al multiplicador |
+   | `crash` | ruta40 | original: el multiplicador sube hasta quebrar, retiro manual o automático |
+   | `mines` | famatina | original: 5×5 con 1 a 24 cargas, cobrar cuando quieras |
+   | `plinko` | kermes | original: la bolita entre clavos, 8/12/16 filas y tres riesgos |
 
    Desde ese momento ya se juega en `npm run dev` → `?game=feria`, aparece en
    `sim`, `tune` y `qa`, y tiene sus pruebas de consistencia. No hay ningún
@@ -89,6 +93,30 @@ npm run new-game -- --id feria --mechanic cualquier-lado --title "La Feria"
    la huella de los archivos que deciden los pagos). `--sin-qa` existe solo
    para probar localmente y no se publica.
 
+## Los originales
+
+Crash, Mines y Plinko no son tragamonedas: no tienen tiras, ni tabla que
+resolver, ni giros gratis. Su matemática vive en `packages/math/src/originals.ts`
+y es CERRADA: el RTP se calcula exacto y es el mismo para cualquier
+estrategia (retirarse en ×1,5 o en ×500, una carga o veinte). El manifest
+es `kind: 'original'` con un `def` (`CrashDef`, `MinesDef` o `PlinkoDef`).
+
+- **El QA** no estima el RTP: lo calcula en todas las configuraciones (los
+  retiros típicos de Crash, las 256 combinaciones de cargas y rocas de
+  Mines, las nueve tablas de Plinko) y simula el motor —con el mismo sorteo
+  y el mismo redondeo que el cliente— para controlar que pague lo que dice
+  la fórmula. Frena si una configuración se va del objetivo o si el motor
+  se separa de la fórmula.
+- **El arte** son piezas (el camión, la dinamita, la bolita) numeradas como
+  los símbolos: el mismo pedido, el mismo recorte y el mismo atlas. La pieza
+  1 es la portada del lobby.
+- **El cliente** es otro (`apps/client/src/originals/`): mueble en HTML con
+  controles de formulario, la escena pintada y Pixi para el juego. La
+  billetera habla con el casino con los mismos mensajes que las
+  tragamonedas (`debit` y `settle`), y una jugada a medias se retoma.
+- **Los pagos** se redondean a fichas sin cambiar su valor esperado
+  (`roundPay`): 20 × 1,03 = 20,6 se paga 21 seis de cada diez veces.
+
 ## Dónde vive cada cosa
 
 ```
@@ -105,6 +133,7 @@ packages/games/<id>/art/
 apps/client/src/
   skins/<id>.ts         dibujo procedural de respaldo (lo único de Pixi por juego)
   render/painted.ts     carga el arte pintado del juego
+  originals/            el cliente de los originales: Crash, Mines, Plinko
   play/                 cómo se reproduce una ronda: líneas, racimos
   ui/                   mueble, menú de compra, tabla de pagos
   presentation-base.ts  fondo pintado y pantallas de la función

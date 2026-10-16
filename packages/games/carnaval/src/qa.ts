@@ -5,19 +5,19 @@
 import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
-  "date": "2026-10-15",
-  "sourceHash": "f8479aae0b11efb4",
+  "date": "2026-10-16",
+  "sourceHash": "f64dbecb2e58dc66",
   "rounds": 800000000,
   "targetRtp": 0.965,
   "rtp": 0.9648857938243761,
-  "rtpCi": 0.0008470047695660213,
+  "rtpCi": 0.0008470047695660214,
   "rtpBase": 0.5429032156401823,
   "rtpFeature": 0.42198257818750096,
   "hitFrequency": 0.27966858375,
   "triggerOneIn": 386.47455016777826,
   "freeSpinsPerTrigger": 16.37728418536479,
-  "stdDev": 12.222914617499647,
-  "volatilityIndex": 20.10669454578692,
+  "stdDev": 12.222914617499649,
+  "volatilityIndex": 20.106694545786922,
   "volatilityLabel": "alta",
   "maxWinX": 10000,
   "maxObservedX": 5899.3,
@@ -26,9 +26,9 @@ export const QA: QaSummary | null = {
       "variant": "simple",
       "label": "Noche de Comparsas",
       "priceX": 172.5,
-      "ev": 166.4927985499998,
-      "evCi": 0.2296831491918498,
-      "rtp": 0.9651756437681148,
+      "ev": 166.49279854999983,
+      "evCi": 0.2296831491918497,
+      "rtp": 0.9651756437681149,
       "buys": 2000000
     }
   ],

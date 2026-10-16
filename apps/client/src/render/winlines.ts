@@ -22,6 +22,12 @@ import type { LineWinDto } from '@casino/protocol';
  */
 export interface TableroDeCeldas {
   cellSprite(reel: number, row: number): Sprite;
+  /**
+   * Dónde está una celda y cuánto mide el símbolo. Solo lo traen los
+   * tableros donde no se deduce de `cellSize`: en uno de caminos cada
+   * columna tiene su alto.
+   */
+  cellBox?(reel: number, row: number): { x: number; y: number; w: number; h: number; size: number };
 }
 
 export interface WinPresenterOptions {
@@ -67,18 +73,19 @@ export class WinPresenter {
     this.#wins = [];
     this.#litCells.clear();
     this.#g.clear();
-    this.#eachCell((s) => {
-      s.alpha = 1;
-      s.scale.set(this.#o.cellSize / s.texture.width);
-    });
     this.#resetSizes();
   }
 
+  /** Lado del símbolo de una celda: `cellSize`, salvo que el tablero diga otro. */
+  #sizeAt(r: number, row: number): number {
+    return this.#reelSet.cellBox?.(r, row).size ?? this.#o.cellSize;
+  }
+
   #resetSizes(): void {
-    const { cellSize } = this.#o;
-    this.#eachCell((s) => {
-      s.width = cellSize;
-      s.height = cellSize;
+    this.#eachCell((s, r, row) => {
+      const size = this.#sizeAt(r, row);
+      s.width = size;
+      s.height = size;
       s.alpha = 1;
     });
   }
@@ -107,8 +114,9 @@ export class WinPresenter {
     this.#eachCell((s, r, row) => {
       const idx = r * rows + row;
       if (cells.has(idx)) {
-        s.width = cellSize * 1.08;
-        s.height = cellSize * 1.08;
+        const size = this.#sizeAt(r, row);
+        s.width = size * 1.08;
+        s.height = size * 1.08;
         s.alpha = 1;
       } else {
         s.alpha = 0.3;
@@ -124,13 +132,12 @@ export class WinPresenter {
     for (const idx of cells) {
       const r = Math.floor(idx / rows);
       const row = idx % rows;
-      const x = r * (cellSize + gap);
-      const y = row * cellSize;
+      const box = this.#reelSet.cellBox?.(r, row) ?? { x: r * (cellSize + gap), y: row * cellSize, w: cellSize, h: cellSize };
       this.#g
-        .roundRect(x + 3, y + 3, cellSize - 6, cellSize - 6, 10)
+        .roundRect(box.x + 3, box.y + 3, box.w - 6, box.h - 6, 10)
         .stroke({ width: 3, color: PALETTE.win, alpha: 0.9 });
       this.#g
-        .roundRect(x + 6, y + 6, cellSize - 12, cellSize - 12, 8)
+        .roundRect(box.x + 6, box.y + 6, box.w - 12, box.h - 12, 8)
         .stroke({ width: 6, color: PALETTE.win, alpha: 0.14 });
     }
 
@@ -164,12 +171,14 @@ export class WinPresenter {
     // Pulso de los símbolos ganadores: laten en vez de quedarse estáticos.
     // Un símbolo quieto con un marco alrededor es un premio muerto; el latido
     // es lo que hace que el ojo vaya solo a lo que ganó.
-    const { rows, cellSize } = this.#o;
+    const { rows } = this.#o;
     const k = 1.08 + 0.05 * Math.sin(this.#pulseT / 105);
     for (const idx of this.#litCells) {
-      const s = this.#reelSet.cellSprite(Math.floor(idx / rows), idx % rows);
-      s.width = cellSize * k;
-      s.height = cellSize * k;
+      const r = Math.floor(idx / rows);
+      const s = this.#reelSet.cellSprite(r, idx % rows);
+      const size = this.#sizeAt(r, idx % rows);
+      s.width = size * k;
+      s.height = size * k;
     }
 
     // El primer tramo es el golpe con todo encendido; después, una por una.

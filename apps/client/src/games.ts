@@ -12,7 +12,7 @@
  */
 
 import type { Application, Graphics } from 'pixi.js';
-import type { GameManifest, HoldWinDef, Jackpots, Palette, RoundEngine, SlotGameDef, Timing } from '@casino/math';
+import type { GameManifest, HoldWinDef, Jackpots, OriginalManifest, Palette, RoundEngine, SlotGameDef, SlotManifest, Timing } from '@casino/math';
 
 import type { SymbolTextures } from './render/symbols.ts';
 import { paintedArtFor, type PaintedArt } from './render/painted.ts';
@@ -58,6 +58,12 @@ export interface ClientGame {
    * compra y la recuperación de ronda son los mismos.
    */
   cluster?: boolean;
+  /**
+   * CAMINOS con columnas de altura variable (Las Cataratas). Es un juego de
+   * racimos para el orquestador; el tablero estira las celdas y el contador
+   * de caminos se muestra arriba.
+   */
+  ways?: boolean;
   /** Texto del pie. */
   tagline: string;
   backdrop: (bg: Graphics, w: number, h: number) => void;
@@ -99,17 +105,17 @@ function labelsOf(skin: GameManifest['theme']['SKIN']): Record<number, string> {
 }
 
 /** Tope por ronda: solo algunos juegos lo declaran (los de líneas sin tope no). */
-function capOf(m: GameManifest): number | undefined {
+function capOf(m: SlotManifest): number | undefined {
   const cap = (m.game as { maxWinX?: number }).maxWinX;
   return cap !== undefined && Number.isFinite(cap) ? cap : undefined;
 }
 
-function holdOf(m: GameManifest): Pick<ClientGame, 'hold'> {
+function holdOf(m: SlotManifest): Pick<ClientGame, 'hold'> {
   const h = (m.game as Partial<HoldWinDef>).holdWin;
   return h ? { hold: { trigger: h.trigger, respins: h.respins, jackpots: h.jackpots } } : {};
 }
 
-function toClientGame(m: GameManifest, art: ClientSkin): ClientGame {
+function toClientGame(m: SlotManifest, art: ClientSkin): ClientGame {
   const qa = m.qa?.passed ? m.qa : null;
   const c = m.client;
   return {
@@ -129,6 +135,7 @@ function toClientGame(m: GameManifest, art: ClientSkin): ClientGame {
     ...(capOf(m) !== undefined ? { maxWinX: capOf(m)! } : {}),
     cellSize: c.cellSize,
     ...(m.kind === 'cluster' ? { cluster: true } : {}),
+    ...(m.kind === 'cluster' && m.game.payMode === 'ways' ? { ways: true } : {}),
     tagline: c.tagline,
     backdrop: art.backdrop,
     ...(c.valueColor ? { valueColor: c.valueColor } : {}),
@@ -149,6 +156,8 @@ export const CLIENT_GAMES: Record<string, ClientGame> = (() => {
   const out: Record<string, ClientGame> = {};
   for (const [path, mod] of Object.entries(MANIFESTS)) {
     const id = idOf(path, /games\/([^/]+)\/src\/manifest\.ts$/);
+    // Los originales tienen su propio cliente (originals/).
+    if (mod.MANIFEST.kind === 'original') continue;
     const art = arts[id];
     // Un juego sin arte de cliente no se puede mostrar: se avisa y se saltea.
     if (!art) {
@@ -159,6 +168,18 @@ export const CLIENT_GAMES: Record<string, ClientGame> = (() => {
   }
   return out;
 })();
+
+/** Los ORIGINALES (Crash, Mines, Plinko), por id. No pasan por el cliente de tragamonedas. */
+export const ORIGINALS: Record<string, OriginalManifest> = (() => {
+  const out: Record<string, OriginalManifest> = {};
+  for (const mod of Object.values(MANIFESTS)) if (mod.MANIFEST.kind === 'original') out[mod.MANIFEST.id] = mod.MANIFEST;
+  return out;
+})();
+
+/** El original que pide la URL, o `null` si es una tragamonedas. */
+export function pickOriginal(): OriginalManifest | null {
+  return ORIGINALS[new URLSearchParams(location.search).get('game') ?? ''] ?? null;
+}
 
 export function pickClientGame(): ClientGame {
   const id = new URLSearchParams(location.search).get('game') ?? 'classic20';

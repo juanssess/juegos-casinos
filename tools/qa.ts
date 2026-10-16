@@ -23,7 +23,10 @@ import { availableParallelism } from 'node:os';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { classifyVolatility, type GameManifest, type QaCheck, type QaSummary } from '@casino/math';
+import {
+  classifyVolatility, originalConfigs,
+  type OriginalManifest, type QaCheck, type QaSummary, type SlotManifest,
+} from '@casino/math';
 import { GAMES_DIR, ROOT, gameIds, loadGame } from './games.ts';
 import { sourceHash } from './qa-lib.ts';
 import type { QaJob, QaJobResult } from './qa-worker.ts';
@@ -112,7 +115,7 @@ function aggregate(rs: QaJobResult[]): Agg {
 const sum = (rs: QaJobResult[], k: keyof QaJobResult): number =>
   rs.reduce((a, r) => a + (r[k] as number), 0);
 
-function variantsOf(m: GameManifest): { id: string; label: string; priceX: number }[] {
+function variantsOf(m: SlotManifest): { id: string; label: string; priceX: number }[] {
   const vs = m.game.bonusVariants ?? [];
   return vs.length ? vs.map((v) => ({ id: v.id, label: v.label, priceX: v.priceX }))
     : [{ id: '', label: 'Compra del bonus', priceX: m.bonusBuyX }];
@@ -123,7 +126,7 @@ const pp = (v: number) => `${(v * 100).toFixed(2).replace('.', ',')}`;
 /** Número con coma decimal, como se lee en castellano. */
 const num = (v: number, d = 2) => v.toLocaleString('es-AR', { maximumFractionDigits: d });
 
-function checks(m: GameManifest, q: Omit<QaSummary, 'checks' | 'passed'>): QaCheck[] {
+function checks(m: SlotManifest, q: Omit<QaSummary, 'checks' | 'passed'>): QaCheck[] {
   const t = m.targetRtp;
   const out: QaCheck[] = [];
   const add = (id: string, level: QaCheck['level'], ok: boolean, msg: string) => out.push({ id, level, ok, msg });
@@ -163,7 +166,7 @@ function writeSheet(id: string, q: QaSummary): void {
   const file = resolve(ROOT, `docs/${id}-math-sheet.md`);
   const ini = '<!-- qa:inicio -->';
   const fin = '<!-- qa:fin -->';
-  const rows: string[] = [
+  const rows: string[] = q.original ? originalSheetRows(id, q, ini, fin) : [
     ini,
     `## QA automático — ${q.passed ? 'APROBADO' : 'NO APROBADO'}`,
     '',
@@ -207,8 +210,136 @@ function writeQaFile(id: string, q: QaSummary): void {
     `export const QA: QaSummary | null = ${JSON.stringify(q, null, 2)};\n`, 'utf8');
 }
 
+/* ── Los originales ─────────────────────────────────────────────────────
+   Su RTP no se estima: se calcula exacto para cada configuración (todos los
+   retiros típicos de Crash, cada combinación de minas y casillas, cada tabla
+   de Plinko). El QA controla dos cosas: que la fórmula dé el objetivo en
+   TODAS, y que el motor —jugado como lo juega el cliente, con su redondeo—
+   pague lo que dice la fórmula. Lo segundo es lo que atrapa un error de
+   programación: una fórmula linda con un motor que hace otra cosa. */
+const ORIG_ROUNDS = Number(arg('orig-rounds', '4e6')) * SCALE;
+
+function originalSheetRows(id: string, q: QaSummary, ini: string, fin: string): string[] {
+  const cs = q.original ?? [];
+  const lo = Math.min(...cs.map((c) => c.exact));
+  const hi = Math.max(...cs.map((c) => c.exact));
+  return [
+    ini,
+    `## QA automático — ${q.passed ? 'APROBADO' : 'NO APROBADO'}`,
+    '',
+    `Generado por \`npm run qa -- --game ${id}\` el ${q.date}. No editar a mano: se reescribe en cada corrida.`,
+    `Huella de la matemática: \`${q.sourceHash}\`.`,
+    '',
+    '| | |',
+    '|---|---|',
+    `| RTP exacto | **${pct(lo, 3)} a ${pct(hi, 3)}** en las ${cs.length} configuraciones (objetivo ${pct(q.targetRtp)}) |`,
+    `| Motor simulado | ${(q.rounds / 1e6).toLocaleString('es-AR')}M de jugadas en total |`,
+    `| Volatilidad | ${q.volatilityLabel} (índice ${q.volatilityIndex.toFixed(1).replace('.', ',')}, en la configuración típica) |`,
+    `| Tope | ${q.maxWinX !== null ? `${q.maxWinX.toLocaleString('es-AR')}×` : 'sin tope'} |`,
+    '',
+    '| Configuración | RTP exacto | Motor (simulado) |',
+    '|---|---|---|',
+    ...cs.filter((_, i) => cs.length <= 40 || i % Math.ceil(cs.length / 40) === 0)
+      .map((c) => `| ${c.label} | ${pct(c.exact, 3)} | ${pct(c.sim, 2)} ± ${pp(c.simCi)} |`),
+    ...(cs.length > 40 ? ['', `(${cs.length} configuraciones en total; la tabla muestra una de cada ${Math.ceil(cs.length / 40)}. Todas están en \`src/qa.ts\`.)`] : []),
+    '',
+    'Controles:',
+    '',
+    ...q.checks.map((c) => `- ${c.ok ? '✓' : c.level === 'error' ? '✗' : '⚠'} ${c.msg}`),
+    fin,
+  ];
+}
+
+/** La configuración "típica" de cada original: la que da la volatilidad y la frecuencia del pie. */
+function typicalConfig(m: OriginalManifest, labels: string[]): number {
+  const want = m.def.kind === 'crash' ? 'retiro en ×2' : m.def.kind === 'mines' ? '3 minas, 3 casillas' : '12 filas, riesgo medio';
+  const i = labels.indexOf(want);
+  return i === -1 ? 0 : i;
+}
+
+async function qaOriginal(m: OriginalManifest): Promise<boolean> {
+  const t0 = Date.now();
+  const id = m.id;
+  console.log(`\n━━ QA de ${id} (original, ${m.def.kind}) ${QUICK ? '(rápido: no escribe nada) ' : ''}━━  ${CORES} núcleos`);
+  const configs = originalConfigs(m.def);
+  // Muchas configuraciones (Mines tiene cientos): el total se reparte entre todas.
+  const each = Math.max(200_000, Math.round((ORIG_ROUNDS * 30) / configs.length));
+  const jobs: QaJob[] = [];
+  configs.forEach((_, k) => {
+    const parts = Math.max(1, Math.ceil(each / 1_000_000));
+    for (let p = 0; p < parts; p++) {
+      jobs.push({ game: id, kind: 'orig', rounds: Math.ceil(each / parts), seed: (Math.imul(k + 1, 0x9e3779b1) ^ Math.imul(p + 1, 0x85ebca6b)) >>> 0, config: k });
+    }
+  });
+  const rs = await runJobs(jobs, `${configs.length} configuraciones`);
+
+  const rows: NonNullable<QaSummary['original']> = configs.map((c, k) => {
+    const a = aggregate(rs.filter((r) => r.job.config === k));
+    return { label: c.label, exact: c.exact, sim: a.mean, simCi: a.ci, n: a.n };
+  });
+  const t = m.targetRtp;
+  const worst = rows.reduce((w, r) => (Math.abs(r.exact - t) > Math.abs(w.exact - t) ? r : w), rows[0]!);
+  /* El motor contra la fórmula. Con cientos de configuraciones (Mines tiene
+     256) alguna va a caer lejos por azar: el margen es de 4,5 desvíos, que
+     el azar pasa una vez cada 150.000 y un error de programación pasa siempre. */
+  const zOf = (r: (typeof rows)[number]) => Math.abs(r.sim - r.exact) / Math.max(r.simCi / 1.96, 1e-9);
+  const worstZ = rows.reduce((w, r) => (zOf(r) > zOf(w) ? r : w), rows[0]!);
+  // El tope declarado (Crash y Mines lo tienen; en Plinko es el pago más alto de las tablas).
+  const cap = 'maxMult' in m.def ? m.def.maxMult : Math.max(...configs.map((c) => c.maxX));
+  const typ = typicalConfig(m, rows.map((r) => r.label));
+  const typRs = rs.filter((r) => r.job.config === typ);
+  const typAgg = aggregate(typRs);
+
+  const cs: QaCheck[] = [
+    { id: 'rtp', level: 'error', ok: Math.abs(worst.exact - t) <= RTP_TOL,
+      msg: `RTP exacto en las ${rows.length} configuraciones: la más lejos del objetivo es "${worst.label}" con ${pct(worst.exact, 3)} (objetivo ${pct(t)}, tolerancia ±${pp(RTP_TOL)})` },
+    { id: 'motor', level: 'error', ok: zOf(worstZ) <= 4.5,
+      msg: `el motor paga lo que dice la fórmula: la mayor diferencia es "${worstZ.label}", ${pct(worstZ.sim)} simulado contra ${pct(worstZ.exact, 3)} exacto (${zOf(worstZ).toFixed(1)} desvíos; máximo 4,5)` },
+    { id: 'tope', level: 'warn', ok: cap >= 1000,
+      msg: `premio máximo ${cap.toLocaleString('es-AR')}× (los originales del mercado: de 1.000× para arriba)` },
+  ];
+  const total = rows.reduce((a, r) => a + r.n, 0);
+  const q: QaSummary = {
+    date: new Date().toISOString().slice(0, 10),
+    sourceHash: sourceHash(id),
+    rounds: total,
+    targetRtp: t,
+    rtp: rows.reduce((a, r) => Math.min(a, r.exact), Infinity),
+    rtpCi: 0,
+    rtpBase: rows[typ]!.exact,
+    rtpFeature: 0,
+    hitFrequency: sum(typRs, 'hits') / typAgg.n,
+    triggerOneIn: 0,
+    freeSpinsPerTrigger: 0,
+    stdDev: typAgg.sd,
+    volatilityIndex: 1.645 * typAgg.sd,
+    volatilityLabel: classifyVolatility(1.645 * typAgg.sd),
+    maxWinX: cap,
+    maxObservedX: Math.max(...rs.map((r) => r.maxX)),
+    buy: [],
+    ante: null,
+    checks: cs,
+    passed: cs.every((c) => c.level !== 'error' || c.ok),
+    original: rows,
+  };
+
+  console.log('');
+  for (const c of cs) console.log(`  ${c.ok ? '✓' : c.level === 'error' ? '✗' : '⚠'} ${c.msg}`);
+  console.log(`\n  ${q.passed ? 'APROBADO' : 'NO APROBADO'} · ${((Date.now() - t0) / 60000).toFixed(1)} min`);
+  if (QUICK) {
+    console.log('  (modo rápido: no se escribió qa.ts ni la ficha)');
+  } else {
+    writeQaFile(id, q);
+    writeSheet(id, q);
+    console.log(`  escrito packages/games/${id}/src/qa.ts y docs/${id}-math-sheet.md`);
+  }
+  return q.passed;
+}
+
 async function qaGame(id: string): Promise<boolean> {
-  const m = await loadGame(id);
+  const loaded = await loadGame(id);
+  if (loaded.kind === 'original') return qaOriginal(loaded);
+  const m = loaded;
   const t0 = Date.now();
   console.log(`\n━━ QA de ${id} ${QUICK ? '(rápido: no escribe nada) ' : ''}━━  ${CORES} núcleos`);
 

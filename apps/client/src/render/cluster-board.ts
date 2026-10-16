@@ -56,7 +56,16 @@ export interface ClusterBoardOptions {
    * valor. Si está, cada celda lleva una etiqueta que viaja con su sprite.
    */
   valueColor?: (v: number) => number;
+  /**
+   * Juegos de CAMINOS (Las Cataratas): cada columna muestra de 2 a `rows`
+   * símbolos según la caída. La grilla llega con `VOID` arriba de lo que la
+   * columna muestra, y las celdas se estiran para llenar el alto.
+   */
+  variableHeight?: boolean;
 }
+
+/** Celda vacía de una grilla de caminos (ver `VOID` en el motor). */
+const VOID = -1;
 
 /** La etiqueta de valor de una celda: el "×25" encima de la bomba. */
 interface ValueBadge {
@@ -76,6 +85,8 @@ interface Anim {
   delay: number;
   dur: number;
   kind: AnimKind;
+  /** Lado del símbolo en su columna (en los juegos de caminos cambia con la altura). */
+  size: number;
 }
 
 export class ClusterBoard {
@@ -126,10 +137,15 @@ export class ClusterBoard {
   #badgeLayers: Container[] = [];
   /** Latido de "las bombas están por multiplicar" (ms restantes). */
   #pulse = 0;
+  /** Cuántos símbolos muestra cada columna ahora (siempre `rows` salvo en caminos). */
+  #heights: number[] = [];
+  /** Las baldosas de cada columna de caminos: una por celda, se redibujan al cambiar el alto. */
+  #tiles: Graphics[] = [];
 
   constructor(opts: ClusterBoardOptions) {
     this.#o = opts;
     const { reels, rows, cellSize, gap, textures } = opts;
+    this.#heights = new Array<number>(reels).fill(rows);
 
     for (let r = 0; r < reels; r++) {
       const col = new Container();
@@ -146,6 +162,11 @@ export class ClusterBoard {
           .rect(0, 0, cellSize, rows * cellSize)
           .fill(r % 2 === 0 ? PALETTE.reelBg : PALETTE.reelBgAlt),
       );
+      if (opts.variableHeight) {
+        const tiles = new Graphics();
+        col.addChild(tiles);
+        this.#tiles.push(tiles);
+      }
 
       const glow = new Graphics()
         .rect(0, 0, cellSize, rows * cellSize)
@@ -288,8 +309,65 @@ export class ClusterBoard {
     return this.#o.textures.get(sym as SymbolId) ?? this.#cells[0]![0]!.texture;
   }
 
-  #restY(row: number): number {
-    return row * this.#o.cellSize + this.#o.cellSize / 2;
+  /* ── Geometría de una columna ─────────────────────────────────────────
+     En un juego de racimos todas las columnas miden `rows` y esto da lo de
+     siempre: celdas de `cellSize`. En uno de caminos la columna muestra
+     `h` símbolos y cada celda mide el alto del tablero dividido `h`; el
+     símbolo es cuadrado, así que su lado es el menor entre el ancho y ese alto. */
+
+  /** Primera fila que la columna muestra (lo de arriba es VOID). */
+  #topOf(r: number): number {
+    return this.#o.rows - this.#heights[r]!;
+  }
+
+  #cellH(r: number): number {
+    return (this.#o.rows * this.#o.cellSize) / this.#heights[r]!;
+  }
+
+  #sizeOf(r: number): number {
+    return Math.min(this.#o.cellSize, this.#cellH(r));
+  }
+
+  #restY(r: number, row: number): number {
+    const ch = this.#cellH(r);
+    return (row - this.#topOf(r)) * ch + ch / 2;
+  }
+
+  /** Cuántos símbolos trae una columna de la grilla. */
+  #heightIn(grid: readonly number[], r: number): number {
+    const { rows } = this.#o;
+    let h = 0;
+    for (let row = 0; row < rows; row++) if (grid[r * rows + row] !== VOID) h++;
+    return h || rows;
+  }
+
+  /** Fija el alto de una columna y redibuja sus baldosas. */
+  #setHeight(r: number, h: number): void {
+    this.#heights[r] = h;
+    const tiles = this.#tiles[r];
+    if (!tiles) return;
+    const { cellSize } = this.#o;
+    const ch = this.#cellH(r);
+    tiles.clear();
+    for (let k = 0; k < h; k++) {
+      tiles.roundRect(3, k * ch + 3, cellSize - 6, ch - 6, 8)
+        .fill({ color: PALETTE.frameLight, alpha: k % 2 === 0 ? 0.05 : 0.025 });
+    }
+  }
+
+  /** Lo que muestra cada columna ahora mismo (caminos = el producto). */
+  get heights(): readonly number[] {
+    return this.#heights;
+  }
+
+  /**
+   * Dónde está una celda y cuánto mide, para el presentador de premios: en
+   * un juego de caminos no se puede deducir de `cellSize`.
+   */
+  cellBox(reel: number, row: number): { x: number; y: number; w: number; h: number; size: number } {
+    const { cellSize, gap } = this.#o;
+    const ch = this.#cellH(reel);
+    return { x: reel * (cellSize + gap), y: this.#restY(reel, row) - ch / 2, w: cellSize, h: ch, size: this.#sizeOf(reel) };
   }
 
   /** Pinta la grilla sin animación (arranque y recuperación de ronda). */
@@ -297,14 +375,18 @@ export class ClusterBoard {
     const { reels, rows, cellSize } = this.#o;
     this.#anims.length = 0;
     for (let r = 0; r < reels; r++) {
+      this.#setHeight(r, this.#heightIn(grid, r));
+      const size = this.#sizeOf(r);
       for (let row = 0; row < rows; row++) {
         const s = this.#cells[r]![row]!;
-        s.texture = this.#tex(grid[r * rows + row]!);
+        const sym = grid[r * rows + row]!;
+        s.visible = sym !== VOID;
+        if (sym !== VOID) s.texture = this.#tex(sym);
         this.#setValue(s, this.#valueAt(values, r * rows + row));
-        s.y = this.#restY(row);
+        s.y = this.#restY(r, row);
         s.alpha = 1;
-        s.width = cellSize;
-        s.height = cellSize;
+        s.width = size;
+        s.height = size;
         // Los del otro juego se estacionan bien arriba, fuera de la mascara.
         this.#ghosts[r]![row]!.y = -cellSize * 4;
         this.#setValue(this.#ghosts[r]![row]!, 0);
@@ -372,27 +454,37 @@ export class ClusterBoard {
       const viejos = this.#cells[r]!;
       const entran = this.#ghosts[r]!;
 
+      // Lo que sale conserva su tamaño; lo que entra toma el de la altura nueva.
+      const sizeOut = this.#sizeOf(r);
       for (let row = 0; row < rows; row++) {
         const sale = viejos[row]!;
-        sale.width = cellSize;
-        sale.height = cellSize;
+        sale.width = sizeOut;
+        sale.height = sizeOut;
         sale.alpha = 1;
-        const y0 = this.#restY(row);
+        const y0 = this.#restY(r, row);
         this.#anims.push({
           s: sale, fromY: y0, toY: y0 + salto,
-          t: 0, delay: colDelay, dur, kind: 'fall',
+          t: 0, delay: colDelay, dur, kind: 'fall', size: sizeOut,
         });
+      }
 
+      // La columna toma su altura nueva (caminos): cambian las baldosas y el tamaño.
+      this.#setHeight(r, this.#heightIn(grid, r));
+      const sizeIn = this.#sizeOf(r);
+      for (let row = 0; row < rows; row++) {
         const entra = entran[row]!;
-        entra.texture = this.#tex(grid[r * rows + row]!);
+        const sym = grid[r * rows + row]!;
+        entra.visible = sym !== VOID;
+        if (sym !== VOID) entra.texture = this.#tex(sym);
         this.#setValue(entra, this.#valueAt(values, r * rows + row));
         entra.alpha = 1;
-        entra.width = cellSize;
-        entra.height = cellSize;
+        entra.width = sizeIn;
+        entra.height = sizeIn;
+        const y0 = this.#restY(r, row);
         entra.y = y0 - salto;
         this.#anims.push({
           s: entra, fromY: y0 - salto, toY: y0,
-          t: 0, delay: colDelay, dur, kind: 'fall',
+          t: 0, delay: colDelay, dur, kind: 'fall', size: sizeIn,
         });
       }
 
@@ -417,7 +509,7 @@ export class ClusterBoard {
    * vez de reemplazar la grilla de golpe.
    */
   tumbleTo(remove: readonly number[], grid: readonly number[], values?: readonly number[]): Promise<void> {
-    const { reels, rows, cellSize } = this.#o;
+    const { reels, rows } = this.#o;
     const f = this.#f();
     this.#anims.length = 0;
     this.#running = true;
@@ -430,8 +522,12 @@ export class ClusterBoard {
       const viejos = this.#cells[r]!;
       const sobreviven: Sprite[] = [];
       const explotan: Sprite[] = [];
+      // Las filas vacías de arriba (caminos) no participan: ni explotan ni caen.
+      const top = this.#topOf(r);
+      const size = this.#sizeOf(r);
+      const ch = this.#cellH(r);
 
-      for (let row = 0; row < rows; row++) {
+      for (let row = top; row < rows; row++) {
         if (fuera.has(r * rows + row)) explotan.push(viejos[row]!);
         else sobreviven.push(viejos[row]!);
       }
@@ -440,7 +536,7 @@ export class ClusterBoard {
 
       // Los que explotan se apagan y quedan libres para reusarse arriba.
       for (const s of explotan) {
-        this.#anims.push({ s, fromY: s.y, toY: s.y, t: 0, delay: 0, dur: POP, kind: 'pop' });
+        this.#anims.push({ s, fromY: s.y, toY: s.y, t: 0, delay: 0, dur: POP, kind: 'pop', size });
       }
 
       /* Los sprites que explotaron se RECICLAN como los nuevos de arriba.
@@ -449,14 +545,14 @@ export class ClusterBoard {
          por ronda que el recolector después tiene que juntar justo mientras
          corre la animación. */
       const nuevos = explotan;
-      const orden: Sprite[] = [...nuevos, ...sobreviven];
+      const orden: Sprite[] = [...viejos.slice(0, top), ...nuevos, ...sobreviven];
 
-      for (let row = 0; row < rows; row++) {
+      for (let row = top; row < rows; row++) {
         const s = orden[row]!;
-        const esNuevo = row < nuevos.length;
+        const esNuevo = row - top < nuevos.length;
         s.texture = this.#tex(grid[r * rows + row]!);
         this.#setValue(s, this.#valueAt(values, r * rows + row));
-        const destino = this.#restY(row);
+        const destino = this.#restY(r, row);
 
         /* Todo lo que se mueve en esta columna recorre EXACTAMENTE lo mismo
            —la cantidad de celdas que explotaron— y tarda lo mismo. Es lo que
@@ -471,20 +567,20 @@ export class ClusterBoard {
              pasa DONDE ESTABA. Si le movemos la `y` aca, salta arriba antes
              de reventar y el jugador ve desaparecer un simbolo que nunca
              estuvo ahi. La escribe la animacion de caida cuando le toca. */
-          const desde = destino - explotan.length * cellSize;
+          const desde = destino - explotan.length * ch;
           this.#anims.push({
             s, fromY: desde, toY: destino,
-            t: 0, delay: POP, dur: caida, kind: 'fall',
+            t: 0, delay: POP, dur: caida, kind: 'fall', size,
           });
         } else if (Math.abs(s.y - destino) > 0.5) {
           this.#anims.push({
             s, fromY: s.y, toY: destino,
-            t: 0, delay: POP, dur: caida, kind: 'fall',
+            t: 0, delay: POP, dur: caida, kind: 'fall', size,
           });
         } else {
           s.y = destino;
-          s.width = cellSize;
-          s.height = cellSize;
+          s.width = size;
+          s.height = size;
           s.alpha = 1;
         }
       }
@@ -524,7 +620,6 @@ export class ClusterBoard {
       return;
     }
     this.#elapsed += dtMs;
-    const { cellSize } = this.#o;
     let vivos = 0;
 
     for (let i = this.#anims.length - 1; i >= 0; i--) {
@@ -542,8 +637,8 @@ export class ClusterBoard {
            tironcito de más es lo que la hace leer como "reventó" en vez de
            "desapareció". */
         const p = k < 0.3 ? 1 + k * 0.9 : 1.27 * (1 - (k - 0.3) / 0.7);
-        a.s.width = cellSize * Math.max(0, p);
-        a.s.height = cellSize * Math.max(0, p);
+        a.s.width = a.size * Math.max(0, p);
+        a.s.height = a.size * Math.max(0, p);
         a.s.alpha = 1 - k;
       } else {
         // Caída con rebote corto al aterrizar.
@@ -556,13 +651,13 @@ export class ClusterBoard {
            acaban de explotar, y la explosion los dejo en tamano cero: si el
            tamano se arregla recien al final, el simbolo cae invisible y
            aparece de golpe ya puesto. Se veia como un tablero medio vacio. */
-        a.s.width = cellSize;
-        a.s.height = cellSize;
+        a.s.width = a.size;
+        a.s.height = a.size;
         // El último tramo de la caída aplasta apenas el símbolo: aterriza, no aparece.
         if (!reducedMotion() && k > 0.8) {
           const landing = Math.sin(((k - 0.8) / 0.2) * Math.PI) * 0.055;
-          a.s.width = cellSize * (1 + landing);
-          a.s.height = cellSize * (1 - landing);
+          a.s.width = a.size * (1 + landing);
+          a.s.height = a.size * (1 - landing);
         }
         if (k >= 1) a.s.y = a.toY;
       }

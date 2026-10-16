@@ -5,8 +5,8 @@
 import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
-  "date": "2026-10-15",
-  "sourceHash": "d94e905de9d6785a",
+  "date": "2026-10-16",
+  "sourceHash": "e0c664fe7f8b934d",
   "rounds": 800000000,
   "targetRtp": 0.965,
   "rtp": 0.9666453531052618,
@@ -27,7 +27,7 @@ export const QA: QaSummary | null = {
       "label": "La Escalinata",
       "priceX": 80,
       "ev": 77.46707372500057,
-      "evCi": 0.14729160170694705,
+      "evCi": 0.147291601706947,
       "rtp": 0.9683384215625072,
       "buys": 2000000
     },
@@ -35,9 +35,9 @@ export const QA: QaSummary | null = {
       "variant": "dorada",
       "label": "Escalinata dorada",
       "priceX": 114,
-      "ev": 109.77915135001795,
-      "evCi": 0.17472975354201675,
-      "rtp": 0.9629750118422628,
+      "ev": 109.77915135001798,
+      "evCi": 0.17472975354201672,
+      "rtp": 0.962975011842263,
       "buys": 2000000
     },
     {
@@ -45,14 +45,14 @@ export const QA: QaSummary | null = {
       "label": "La Cima",
       "priceX": 292,
       "ev": 281.6558271999911,
-      "evCi": 0.347885487438329,
+      "evCi": 0.34788548743832887,
       "rtp": 0.9645747506849011,
       "buys": 2000000
     }
   ],
   "ante": {
     "costX": 1.75,
-    "rtp": 0.9678749745645534,
+    "rtp": 0.9678749745645535,
     "rtpCi": 0.0008889997832668162,
     "triggerOneIn": 68.86133479089825,
     "rounds": 400000000

@@ -36,6 +36,11 @@ export async function playClusterStep(ctx: PlayContext, step: SpinStep, roundBet
 
   audio.spinStart();
   const caida = tablero.spinTo(step.grid, dropEvents(ctx, step), step.mults);
+  if (ctx.waysLabel) {
+    // Los caminos de esta caída: el producto de lo que muestra cada columna.
+    const caminos = tablero.heights.reduce((a, h) => a * h, 1);
+    ctx.waysLabel.text = `${caminos.toLocaleString('es-AR')} CAMINOS`;
+  }
   if (session.skipRequested) tablero.stopNow();
   await caida;
   audio.spinEnd();

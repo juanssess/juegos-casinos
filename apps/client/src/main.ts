@@ -19,7 +19,7 @@ import { CryptoRng, SYM } from '@casino/math';
 import type { RgsClient } from '@casino/protocol';
 import { RgsError, RGS_ERRORS } from '@casino/protocol';
 
-import { pickClientGame } from './games.ts';
+import { pickClientGame, pickOriginal } from './games.ts';
 import { LocalRgs, roundToSteps } from './rgs/local.ts';
 import { BridgeRgs, isEmbedded } from './rgs/bridge.ts';
 import { setActiveTheme, PALETTE, TIMING } from './render/theme.ts';
@@ -41,6 +41,13 @@ import type { PlayContext, Session, TraceEntry } from './play/context.ts';
 import { celebrate, playRound } from './play/round.ts';
 
 async function main(): Promise<void> {
+  // Los originales (Crash, Mines, Plinko) son otro cliente: no hay rodillos.
+  const original = pickOriginal();
+  if (original) {
+    await (await import('./originals/boot.ts')).bootOriginal(original);
+    return;
+  }
+
   // Qué juego se carga lo decide la URL (?game=sebusca). Todo lo que sigue
   // es genérico: el orquestador no sabe de qué juego se trata.
   const profile = pickClientGame();
@@ -132,6 +139,7 @@ async function main(): Promise<void> {
     scattersToTrigger: cfg.scattersToTrigger,
     ...(profile.hold ? { anticipateAt: profile.hold.trigger - 2 } : {}),
     ...(profile.valueColor ? { valueColor: profile.valueColor } : {}),
+    ...(profile.ways ? { variableHeight: true } : {}),
   };
   const reelSet: ReelSet | ClusterBoard = profile.cluster
     ? new ClusterBoard(opcionesTablero)
@@ -205,6 +213,26 @@ async function main(): Promise<void> {
   cascadaBadge.anchor.set(1, 1);
   cascadaBadge.visible = false;
   root.addChild(cascadaBadge);
+
+  /* Cuántos caminos tiene la caída, en los juegos de caminos. Cambia en cada
+     jugada y es parte de la emoción: siete en todas son 117.649. */
+  const waysLabel = profile.ways
+    ? new Text({
+        text: '',
+        style: {
+          fontFamily: 'Georgia, serif',
+          fontSize: 15,
+          fontWeight: '700',
+          fill: PALETTE.scatter,
+          stroke: { color: 0x100a08, width: 4 },
+          letterSpacing: 1,
+        },
+      })
+    : null;
+  if (waysLabel) {
+    waysLabel.anchor.set(0.5, 0);
+    root.addChild(waysLabel);
+  }
 
   const title = new Text({
     text: cfg.title.toUpperCase(),
@@ -286,6 +314,11 @@ async function main(): Promise<void> {
     title.y = -36;
     cascadaBadge.x = boardW;
     cascadaBadge.y = -34;
+    if (waysLabel) {
+      // Entre el tablero y el mueble: arriba compite con el título.
+      waysLabel.x = boardW / 2;
+      waysLabel.y = boardH + 8;
+    }
     freeCounter.x = boardW / 2;
     freeCounter.y = -36;
     footer.x = boardW / 2;
@@ -379,6 +412,7 @@ async function main(): Promise<void> {
     holdBoard,
     freeCounter,
     cascadaBadge,
+    waysLabel,
     presentation,
     session,
     hasClimb: cfg.climbTiers.length > 0,
@@ -405,6 +439,7 @@ async function main(): Promise<void> {
       return tira[(r * 11 + row * 3) % tira.length]!;
     }),
   );
+  if (waysLabel) waysLabel.text = `${(cfg.rows ** cfg.reels).toLocaleString('es-AR')} CAMINOS`;
 
   /** Un frame de animación. Separado del ticker para poder avanzarlo a mano. */
   function step(dt: number): void {

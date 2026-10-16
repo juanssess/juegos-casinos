@@ -9,16 +9,21 @@
  *   node tools/qa-worker.ts '{"game":"kiosco","kind":"base","rounds":5e7,"seed":1}'
  */
 
-import { Sfc32Rng, type FastRound } from '@casino/math';
-import { loadGame } from './games.ts';
+import {
+  Sfc32Rng, crashPoint, minesMultiplier, originalConfigs, placeMines, plinkoDrop, plinkoKey, roundPay,
+  type FastRound, type OriginalConfig, type OriginalDef, type Rng,
+} from '@casino/math';
+import { loadGame, loadSlot } from './games.ts';
 
 export interface QaJob {
   game: string;
-  kind: 'base' | 'ante' | 'buy';
+  kind: 'base' | 'ante' | 'buy' | 'orig';
   rounds: number;
   seed: number;
   /** Solo en `buy`: la variante a comprar ('' = la compra simple). */
   variant?: string;
+  /** Solo en `orig`: qué configuración del original (índice de `originalConfigs`). */
+  config?: number;
 }
 
 export interface QaJobResult {
@@ -39,8 +44,62 @@ export interface QaJobResult {
   ms: number;
 }
 
-async function run(job: QaJob): Promise<QaJobResult> {
+/**
+ * Una jugada de un original con una configuración fija, jugada como la juega
+ * el cliente: el mismo sorteo, el mismo pago y el mismo redondeo. Devuelve el
+ * premio en veces la apuesta.
+ */
+function playOriginal(def: OriginalDef, play: OriginalConfig['play'], rng: Rng, bet: number, scratch: number[]): number {
+  if (def.kind === 'crash') {
+    const target = play.target!;
+    return crashPoint(def, rng) >= target ? roundPay(bet * target, rng) / bet : 0;
+  }
+  if (def.kind === 'mines') {
+    const m = play.mines!;
+    const k = play.reveals!;
+    const mines = new Set(placeMines(def, m, rng));
+    // El jugador destapa k casillas al azar: partial shuffle sobre las 25.
+    for (let i = 0; i < def.cells; i++) scratch[i] = i;
+    for (let i = 0; i < k; i++) {
+      const j = i + rng.nextInt(def.cells - i);
+      const t = scratch[i]!;
+      scratch[i] = scratch[j]!;
+      scratch[j] = t;
+      if (mines.has(scratch[i]!)) return 0;
+    }
+    return roundPay(bet * minesMultiplier(def, m, k), rng) / bet;
+  }
+  const n = play.rows!;
+  const { bucket } = plinkoDrop(n, rng);
+  return roundPay(bet * def.tables[plinkoKey(n, play.risk!)]![bucket]!, rng) / bet;
+}
+
+async function runOriginal(job: QaJob): Promise<QaJobResult> {
   const m = await loadGame(job.game);
+  if (m.kind !== 'original') throw new Error(`${job.game} no es un original`);
+  const rng = new Sfc32Rng(job.seed);
+  const r: QaJobResult = {
+    job, n: job.rounds, sumX: 0, sumX2: 0, maxX: 0, sumBaseX: 0, sumFeatX: 0,
+    hits: 0, triggers: 0, freeSpins: 0, capped: 0, ms: 0,
+  };
+  const t0 = performance.now();
+  const scratch: number[] = [];
+  const play = originalConfigs(m.def)[job.config ?? 0]!.play;
+  for (let i = 0; i < job.rounds; i++) {
+    const x = playOriginal(m.def, play, rng, 100, scratch);
+    r.sumX += x;
+    r.sumX2 += x * x;
+    if (x > r.maxX) r.maxX = x;
+    if (x > 0) r.hits++;
+  }
+  r.sumBaseX = r.sumX;
+  r.ms = performance.now() - t0;
+  return r;
+}
+
+async function run(job: QaJob): Promise<QaJobResult> {
+  if (job.kind === 'orig') return runOriginal(job);
+  const m = await loadSlot(job.game);
   const game = m.game;
   const engine = m.engine();
   const rng = new Sfc32Rng(job.seed);

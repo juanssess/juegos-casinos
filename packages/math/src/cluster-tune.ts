@@ -95,7 +95,8 @@ export function measureCluster(
   const seq = new Float64Array(16 * stride);
 
   const ladder = game.cascadeMults;
-  const multAt = (i: number): number => ladder[i < ladder.length ? i : ladder.length - 1] ?? 1;
+  const baseLadder = game.baseCascadeMults ?? ladder;
+  const multAt = (i: number, lad: readonly number[]): number => lad[i < lad.length ? i : lad.length - 1] ?? 1;
 
   let triggers = 0;
   let freeSpinsPlayed = 0;
@@ -105,16 +106,17 @@ export function measureCluster(
   function run(
     strips: readonly (readonly number[])[], out: Float64Array, rung: number,
     vals: CellValues | null = null,
+    lad: readonly number[] = ladder,
   ): number {
     const acc = vals ? seq : out;
     if (vals) seq.fill(0);
     for (;;) {
       const list = ev.clusters(grid);
       if (list.length === 0) break;
-      const mult = multAt(rung);
+      const mult = multAt(rung, lad);
       for (const c of list) {
         const t = ev.tierOf(c.size);
-        if (t >= 0) acc[c.symbol * stride + t]! += mult;
+        if (t >= 0) acc[c.symbol * stride + t]! += mult * (c.ways ?? 1);
       }
       cascades++;
       rung++;
@@ -145,7 +147,7 @@ export function measureCluster(
     const sc = ev.countScatters(grid);
     scatter[sc]! += 1;
     accum = -1;
-    run(game.baseStrips, base, 0, baseValues);
+    run(game.baseStrips, base, 0, baseValues, baseLadder);
 
     if (sc >= game.scattersToTrigger) {
       triggers++;

@@ -7,8 +7,8 @@ número acá sale de `tools/sim.ts` y `tools/tune.ts`, no de estimaciones.
 <!-- qa:inicio -->
 ## QA automático — APROBADO
 
-Generado por `npm run qa -- --game classic20` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `d94e905de9d6785a`.
+Generado por `npm run qa -- --game classic20` el 2026-10-16. No editar a mano: se reescribe en cada corrida.
+Huella de la matemática: `e0c664fe7f8b934d`.
 
 | | |
 |---|---|

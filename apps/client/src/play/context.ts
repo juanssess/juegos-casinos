@@ -60,6 +60,8 @@ export interface PlayContext {
   holdBoard: HoldBoard | null;
   freeCounter: Text;
   cascadaBadge: Text;
+  /** Juegos de caminos: "117.649 CAMINOS" arriba a la izquierda. `null` en los demás. */
+  waysLabel: Text | null;
   presentation: Presentation;
   session: Session;
   /** ¿Este juego tiene Escalinata? Si no, la feature son pegajosos o cascadas. */

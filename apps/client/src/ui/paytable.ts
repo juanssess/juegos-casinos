@@ -79,19 +79,29 @@ export function createPaytable(opts: {
     /* Dos clases de juego de racimos: los que piden símbolos PEGADOS (La
        Vendimia) y los que pagan EN CUALQUIER LADO (El Kiosco). Cambian la
        regla de arriba, los tramos y la sección de la feature. */
-    const racimos = GAME as { payMode?: string; tierLabels?: readonly string[]; minSize?: number; cascadeMults?: readonly number[] };
+    const racimos = GAME as {
+      payMode?: string; tierLabels?: readonly string[]; minSize?: number; cascadeMults?: readonly number[];
+      accumulateBombs?: boolean; freeSpinsAwarded: number; freeSpinsRetrigger: number; scattersToRetrigger?: number;
+    };
     const enCualquierLado = racimos.payMode === 'anywhere';
+    const caminos = racimos.payMode === 'ways';
     const tramos = racimos.tierLabels ?? TIER_LABELS;
+    // Los nombres salen del tema del juego: la tabla es la misma para todos.
+    const scatNombre = SKIN[1] ?? 'Scatter';
 
-    t('premios en múltiplos de la ficha (apuesta ÷ 20)  ·  tocá para cerrar', boardW / 2, -8, 10.5, PALETTE.textDim, 0.5);
-    t(enCualquierLado
-      ? `PAGAN ${racimos.minSize ?? 8} O MÁS IGUALES EN CUALQUIER LUGAR DE LA GRILLA — no hace falta que se toquen.`
-      : 'UN RACIMO SON 5 O MÁS SÍMBOLOS IGUALES PEGADOS — arriba, abajo o al costado, en cualquier forma.',
+    t(caminos
+      ? 'premios en múltiplos de la ficha (apuesta ÷ 20) POR CAMINO  ·  tocá para cerrar'
+      : 'premios en múltiplos de la ficha (apuesta ÷ 20)  ·  tocá para cerrar', boardW / 2, -8, 10.5, PALETTE.textDim, 0.5);
+    t(caminos
+      ? 'PAGA UN SÍMBOLO EN COLUMNAS SEGUIDAS DESDE LA IZQUIERDA — por cada camino que forme.'
+      : enCualquierLado
+        ? `PAGAN ${racimos.minSize ?? 8} O MÁS IGUALES EN CUALQUIER LUGAR DE LA GRILLA — no hace falta que se toquen.`
+        : 'UN RACIMO SON 5 O MÁS SÍMBOLOS IGUALES PEGADOS — arriba, abajo o al costado, en cualquier forma.',
       boardW / 2, 8, 11.5, PALETTE.scatter, 0.5);
 
     const colX = tramos.map((_, k) => boardW - 54 * (tramos.length - 1 - k));
     tramos.forEach((lab, k) => t(lab, colX[k]!, 30, 10.5, PALETTE.textDim, 1));
-    t(enCualquierLado ? 'cuántos hay en la grilla →' : 'tamaño del racimo →', 4, 30, 10.5, PALETTE.textDim);
+    t(caminos ? 'columnas seguidas →' : enCualquierLado ? 'cuántos hay en la grilla →' : 'tamaño del racimo →', 4, 30, 10.5, PALETTE.textDim);
 
     enJuego.forEach((sym, k) => {
       const y = 46 + k * 34;
@@ -103,9 +113,15 @@ export function createPaytable(opts: {
 
     const reglasY = 46 + enJuego.length * 34 + 6;
     sprite(0, 34, 2, reglasY);
-    if (enCualquierLado) {
-      t(`${SKIN[0]}: solo en los giros gratis. No paga y no se va con las cascadas.`, 40, reglasY + 2, 11.5, PALETTE.text);
-      t('Si la secuencia gana, el premio se multiplica por la SUMA de todas las bombas de la grilla.',
+    if (caminos) {
+      t(`${SKIN[0]}: sustituye a todo menos al ${scatNombre}. Cae en las columnas 2 a 5.`, 40, reglasY + 2, 11.5, PALETTE.text);
+      t('Caminos = cuántas veces está el símbolo en cada columna, multiplicado: 2 × 3 × 1 = 6 caminos.',
+        40, reglasY + 18, 10.5, PALETTE.textDim);
+    } else if (enCualquierLado) {
+      t(`${SKIN[0]}: no paga y no se va con las cascadas.`, 40, reglasY + 2, 11.5, PALETTE.text);
+      t(racimos.accumulateBombs
+        ? 'Si la secuencia gana, el premio se multiplica por la SUMA de los multiplicadores de la grilla.'
+        : 'Si la secuencia gana, el premio se multiplica por la SUMA de todas las bombas de la grilla.',
         40, reglasY + 18, 10.5, PALETTE.textDim);
     } else {
       t('Sustituye a todo menos a la Barrica, y PEGA racimos.', 40, reglasY + 2, 11.5, PALETTE.text);
@@ -114,20 +130,28 @@ export function createPaytable(opts: {
 
     sprite(1, 34, 2, reglasY + 40);
     const sp = cfg.scatterPaytable;
-    const scatPlural = enCualquierLado ? 'chupetines' : 'barricas';
-    t(`${cfg.scattersToTrigger}+ ${scatPlural} en cualquier lado dan giros gratis.`, 40, reglasY + 42, 11.5, PALETTE.text);
-    t(`Además pagan ${sp[4]}× / ${sp[5]}× / ${sp[6]}× la apuesta con 4, 5 y 6${enCualquierLado ? ' o más' : ''}.`,
+    t(`${cfg.scattersToTrigger} o más (${scatNombre}) en cualquier lado dan giros gratis.`, 40, reglasY + 42, 11.5, PALETTE.text);
+    t(`Además pagan ${sp[4]}× / ${sp[5]}× / ${sp[6]}× la apuesta con 4, 5 y 6${enCualquierLado || caminos ? ' o más' : ''}.`,
       40, reglasY + 58, 10.5, PALETTE.textDim);
 
     const escY = reglasY + 88;
-    if (enCualquierLado) {
-      const k = GAME as { freeSpinsAwarded: number; freeSpinsRetrigger: number; scattersToRetrigger?: number };
-      t('CASCADAS Y BOMBAS', 4, escY, 14, PALETTE.scatter);
+    const retrigger = `Giros gratis: ${racimos.freeSpinsAwarded} giros · ${racimos.scattersToRetrigger ?? cfg.scattersToTrigger} o más adentro suman ${racimos.freeSpinsRetrigger} más.`;
+    if (caminos) {
+      t('CASCADAS Y EL MULTIPLICADOR', 4, escY, 14, PALETTE.scatter);
+      t(`Cada columna muestra de 2 a ${cfg.rows} símbolos: hasta ${(cfg.rows ** cfg.reels).toLocaleString('es-AR')} caminos. Lo que gana se va y cae lo de arriba.`,
+        4, escY + 20, 11, PALETTE.text);
+      t(retrigger, 4, escY + 38, 11, PALETTE.text);
+      t('En los giros gratis cada cascada que gana suma uno al multiplicador, y no vuelve atrás.',
+        4, escY + 56, 11, PALETTE.mult ?? PALETTE.win);
+      t(pie('Compra del bonus desde '), 4, escY + 78, 10.5, PALETTE.textDim);
+    } else if (enCualquierLado) {
+      t(racimos.accumulateBombs ? 'CASCADAS Y MULTIPLICADORES QUE SE ACUMULAN' : 'CASCADAS Y BOMBAS', 4, escY, 14, PALETTE.scatter);
       t('Lo que gana se va, cae lo de arriba, entra lo nuevo y se vuelve a mirar, hasta que no haya premio.',
         4, escY + 20, 11, PALETTE.text);
-      t(`Giros gratis: ${k.freeSpinsAwarded} giros · ${k.scattersToRetrigger ?? cfg.scattersToTrigger}+ ${scatPlural} adentro suman ${k.freeSpinsRetrigger} más.`,
-        4, escY + 38, 11, PALETTE.text);
-      t('Las bombas valen de ×2 a ×500 y se SUMAN: dos de ×10 y una de ×25 multiplican ×45.',
+      t(retrigger, 4, escY + 38, 11, PALETTE.text);
+      t(racimos.accumulateBombs
+        ? 'En la función cada secuencia que gana con multiplicadores los SUMA a un total que no vuelve a cero.'
+        : 'Las bombas valen de ×2 a ×500 y se SUMAN: dos de ×10 y una de ×25 multiplican ×45.',
         4, escY + 56, 11, PALETTE.mult ?? PALETTE.win);
       t(pie('Compra del bonus desde '), 4, escY + 78, 10.5, PALETTE.textDim);
     } else {

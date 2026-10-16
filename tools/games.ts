@@ -14,7 +14,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import type { GameManifest } from '@casino/math';
+import type { GameManifest, SlotManifest } from '@casino/math';
 
 export type { GameManifest as GameEntry } from '@casino/math';
 
@@ -48,9 +48,16 @@ export async function loadGames(): Promise<Record<string, GameManifest>> {
   return out;
 }
 
-/** `--game <id>` de la línea de comandos; classic20 si no se pasa. */
-export async function pickGame(argv: readonly string[]): Promise<GameManifest> {
+/** Una TRAGAMONEDAS: los originales no tienen tiras que simular ni tabla que resolver. */
+export async function loadSlot(id: string): Promise<SlotManifest> {
+  const m = await loadGame(id);
+  if (m.kind === 'original') throw new Error(`${id} es un original: su RTP es exacto, se controla con npm run qa`);
+  return m;
+}
+
+/** `--game <id>` de la línea de comandos; classic20 si no se pasa. Solo tragamonedas. */
+export async function pickGame(argv: readonly string[]): Promise<SlotManifest> {
   const i = argv.indexOf('--game');
   const id = i === -1 ? 'classic20' : (argv[i + 1] ?? 'classic20');
-  return loadGame(id);
+  return loadSlot(id);
 }

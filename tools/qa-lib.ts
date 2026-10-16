@@ -65,6 +65,8 @@ export function publishBlocker(m: GameManifest): string | null {
 /** Los símbolos que el juego pone de verdad en alguna tira. */
 function symbolsInPlay(m: GameManifest): Set<number> {
   const used = new Set<number>();
+  // Un original no tiene tiras: lo que tiene que estar pintado son sus piezas.
+  if (m.kind === 'original') return new Set(Object.keys(m.art.symbols).map(Number));
   const g = m.game as { baseStrips: readonly (readonly number[])[]; freeStrips: readonly (readonly number[])[]; anteStrips?: readonly (readonly number[])[] };
   for (const strips of [g.baseStrips, g.freeStrips, g.anteStrips ?? []]) for (const s of strips) for (const sym of s) used.add(sym);
   return used;

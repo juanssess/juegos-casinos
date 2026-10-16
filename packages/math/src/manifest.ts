@@ -22,6 +22,7 @@ import type { ClusterGameDef } from './cluster.ts';
 import type { RoundEngine } from './round.ts';
 import type { FreqReport } from './tune.ts';
 import type { ClusterFreqReport } from './cluster-tune.ts';
+import type { OriginalDef } from './originals.ts';
 
 /** Colores del juego. El render los lee; la matemática no los usa. */
 export interface Palette {
@@ -123,6 +124,12 @@ export interface QaSummary {
   ante: { costX: number; rtp: number; rtpCi: number; triggerOneIn: number; rounds: number } | null;
   checks: QaCheck[];
   passed: boolean;
+  /**
+   * Solo en los ORIGINALES: cada configuración controlada (un retiro de
+   * Crash, una combinación de Mines, una tabla de Plinko) con su retorno
+   * exacto y el que midió la simulación del motor.
+   */
+  original?: { label: string; exact: number; sim: number; simCi: number; n: number }[];
 }
 
 interface ManifestBase {
@@ -153,7 +160,38 @@ export interface ClusterManifest extends ManifestBase {
   measure: (opts: { rounds: number; seed?: number }) => ClusterFreqReport;
 }
 
-export type GameManifest = LinesManifest | ClusterManifest;
+/** Las tragamonedas: lo que tiene tiras, giros y compra del bonus. */
+export type SlotManifest = LinesManifest | ClusterManifest;
+
+/** Lo que el cliente de un original necesita y no es matemática. */
+export interface OriginalClientSettings {
+  betLevels: readonly number[];
+  /** Texto del pie, después del RTP. */
+  tagline: string;
+  /** Tinte del fondo pintado en los momentos grandes. */
+  featureTint?: number;
+  /** Una frase sobre el juego, para el lobby. */
+  featureDetail?: string;
+}
+
+/**
+ * Un ORIGINAL (Crash, Mines, Plinko): sin tiras ni giros. El RTP es exacto
+ * por construcción (ver originals.ts) y el QA lo controla configuración por
+ * configuración. El arte son PIEZAS (el camión, la mina, la bola), numeradas
+ * como los símbolos para usar el mismo recorte y el mismo atlas.
+ */
+export interface OriginalManifest {
+  id: string;
+  kind: 'original';
+  def: OriginalDef;
+  theme: GameTheme;
+  client: OriginalClientSettings;
+  targetRtp: number;
+  qa: QaSummary | null;
+  art: ArtDirection;
+}
+
+export type GameManifest = SlotManifest | OriginalManifest;
 
 /**
  * El arte pintado de un juego: lo que hay en `packages/games/<id>/art/`.

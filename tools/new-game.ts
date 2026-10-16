@@ -12,6 +12,10 @@
  *   cualquier-lado  6×5, 8 iguales en cualquier lado y bombas → kiosco
  *   hold-win        5×3, monedas que se quedan y re-giros      → feria
  *   acumulados      6×5, cualquier lado, multiplicadores que se suman → carnaval
+ *   caminos         6 columnas de 2 a 7, hasta 117.649 caminos, cascadas → cataratas
+ *   crash           el multiplicador sube hasta quebrar (original)  → ruta40
+ *   mines           5×5 con cargas, cobrar cuando quieras (original) → famatina
+ *   plinko          la bolita entre clavos, filas y riesgo (original) → kermes
  *
  * Por qué COPIAR un juego entero y no partir de una plantilla vacía: el molde
  * es un juego que ya pasó el QA. El juego nuevo arranca jugable, con la
@@ -41,6 +45,10 @@ const MECHANICS: Record<string, string> = {
   'cualquier-lado': 'kiosco',
   'hold-win': 'feria',
   acumulados: 'carnaval',
+  caminos: 'cataratas',
+  crash: 'ruta40',
+  mines: 'famatina',
+  plinko: 'kermes',
 };
 
 function arg(name: string): string | undefined {
@@ -106,9 +114,12 @@ if (existsSync(artJson)) {
   writeFileSync(artJson, JSON.stringify(art, null, 2) + '\n', 'utf8');
 }
 
+const original = molde.kind === 'original';
+
 // 2. El arte de cliente: el del molde, hasta que haya atlas pintado propio.
+// Un original no tiene dibujo procedural de respaldo: sus piezas son las del atlas.
 const skinFile = resolve(ROOT, `apps/client/src/skins/${id}.ts`);
-writeFileSync(skinFile,
+if (!original) writeFileSync(skinFile,
   `/**\n * Arte de cliente de ${id}.\n *\n * PROVISORIO: usa los símbolos y el fondo de ${from}. El arte final es un atlas\n` +
   ` * pintado (ver Casino (PRUEBA)/assets/illustrated/README.md); mientras tanto\n` +
   ` * el juego se puede jugar y medir con el dibujo del molde.\n */\n\n` +
@@ -116,7 +127,26 @@ writeFileSync(skinFile,
 
 // 3. Las pruebas: las de consistencia, que valen para cualquier juego.
 const testFile = resolve(ROOT, `packages/math/test/${id}.test.ts`);
-writeFileSync(testFile, `/**
+if (original) writeFileSync(testFile, `/**
+ * ${title} — pruebas del original (generadas por new-game).
+ *
+ * El RTP de un original es exacto: cada configuración tiene que dar el
+ * objetivo. El QA además simula el motor contra la fórmula.
+ */
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+
+import { originalConfigs } from '../src/index.ts';
+import { DEF } from '../../games/${id}/src/index.ts';
+
+test('todas las configuraciones devuelven el RTP objetivo', () => {
+  for (const c of originalConfigs(DEF)) {
+    assert.ok(Math.abs(c.exact - DEF.rtp) < 0.002, \`\${c.label}: \${c.exact}\`);
+  }
+});
+`, 'utf8');
+else writeFileSync(testFile, `/**
  * ${title} — pruebas de consistencia del motor (generadas por new-game).
  *
  * Valen para cualquier juego: la ruta con detalle (\`play\`) y la rápida
@@ -186,7 +216,7 @@ console.log(`
 ${title} (${id}) creado a partir de ${from} (${molde.theme.TITLE}).
 
   packages/games/${id}/            ${files} archivos, QA en cero
-  apps/client/src/skins/${id}.ts   arte provisorio de ${from}
+  ${original ? `(original: sin dibujo de respaldo, usa las piezas del atlas)` : `apps/client/src/skins/${id}.ts   arte provisorio de ${from}`}
   packages/math/test/${id}.test.ts
   docs/${id}-math-sheet.md
 

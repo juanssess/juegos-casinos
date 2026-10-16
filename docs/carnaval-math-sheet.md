@@ -8,8 +8,8 @@ función (`accumulateBombs`). Tema: el Carnaval del País, Gualeguaychú.
 <!-- qa:inicio -->
 ## QA automático — APROBADO
 
-Generado por `npm run qa -- --game carnaval` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `f8479aae0b11efb4`.
+Generado por `npm run qa -- --game carnaval` el 2026-10-16. No editar a mano: se reescribe en cada corrida.
+Huella de la matemática: `f64dbecb2e58dc66`.
 
 | | |
 |---|---|

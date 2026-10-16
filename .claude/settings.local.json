@@ -7,7 +7,8 @@
       "Bash(sed -i 's|<script src=\"src/games/plantilla.js\"></script>|<script src=\"src/games/plantilla.js\"></script>\\\\n<script src=\"src/games/proveedor.js\"></script>|' index.html)",
       "Bash(sed -i 's|    MCSportsbook, MCPlantilla|    MCSportsbook, MCPlantilla, MCProveedor|' src/main.js)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8123/)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8123/games/slots/index.html)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8123/games/slots/index.html)",
+      "Bash(node -e ' *)"
     ]
   }
 }
