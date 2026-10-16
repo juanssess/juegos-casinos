@@ -129,6 +129,20 @@ export interface ClusterGameDef extends SlotGameDef {
    * y al terminar la secuencia multiplican su premio por la SUMA de todas.
    */
   bombValues?: readonly (readonly number[])[];
+  /**
+   * Bombas también en el JUEGO BASE: valores alineados con `baseStrips` (y
+   * con `anteStrips` en `anteBombValues`). Ahí multiplican la secuencia que
+   * ganó por la suma de las que hay, sin acumular.
+   */
+  baseBombValues?: readonly (readonly number[])[];
+  anteBombValues?: readonly (readonly number[])[];
+  /**
+   * MULTIPLICADORES ACUMULADOS en los giros gratis: cada secuencia que gana
+   * con bombas suma su valor a un total que NO se reinicia en toda la
+   * función, y ese total es el que multiplica el premio de la secuencia. Una
+   * secuencia que gana sin bombas paga sin multiplicar.
+   */
+  accumulateBombs?: boolean;
 }
 
 /** Un racimo ganador. */

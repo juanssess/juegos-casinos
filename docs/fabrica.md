@@ -19,6 +19,7 @@ npm run new-game -- --id feria --mechanic cualquier-lado --title "La Feria"
    | `pegajosos` | sebusca | 5×5, 15 líneas, wilds que se quedan con multiplicador |
    | `racimos` | vendimia | 6×5, racimos pegados, cascadas con escalera |
    | `cualquier-lado` | kiosco | 6×5, 8 iguales en cualquier lado, bombas |
+   | `acumulados` | carnaval | 6×5, 8 iguales en cualquier lado, multiplicadores en la base y que se acumulan en la función |
    | `hold-win` | feria | 5×3, 20 líneas, monedas que se quedan y re-giros; llenar la pantalla paga el Grand |
 
    Desde ese momento ya se juega en `npm run dev` → `?game=feria`, aparece en

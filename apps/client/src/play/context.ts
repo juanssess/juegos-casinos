@@ -35,6 +35,8 @@ export interface Session {
   skipRequested: boolean;
   /** Reloj del juego, en ms. Avanza con cada frame (o con `pump()` en QA). */
   simTime: number;
+  /** Multiplicador acumulado de la función en curso (juegos que acumulan). */
+  accum: number;
 }
 
 export interface TraceEntry {

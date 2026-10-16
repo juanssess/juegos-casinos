@@ -88,6 +88,14 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
   const fastValues: CellValues | null = bombStrips ? { strips: bombStrips, cells: new Int32Array(cells) } : null;
   const newValues = (): CellValues | null =>
     bombStrips ? { strips: bombStrips, cells: new Int32Array(cells) } : null;
+  // Bombas del juego base (y del ante), si el juego las tiene.
+  const baseBombs = game.payMode === 'anywhere' ? game.baseBombValues ?? null : null;
+  const baseValuesFor = (ante: boolean): CellValues | null => {
+    const s = ante && game.anteStrips ? game.anteBombValues ?? null : baseBombs;
+    return s ? { strips: s, cells: new Int32Array(cells) } : null;
+  };
+  const fastBaseValues = baseValuesFor(false);
+  const fastAnteValues = baseValuesFor(true);
   const retrigger = game.scattersToRetrigger ?? game.scattersToTrigger;
 
   function bombSum(values: CellValues): number {
@@ -113,7 +121,10 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     detail: TumbleRecord[] | null,
     firstEval: { value: SpinEval | null; multiplier: number },
     values: CellValues | null = null,
-  ): { win: number; rung: number; capped: boolean; bombs: number; bombWin: number } {
+    /* Multiplicador acumulado ANTES de esta secuencia, o -1 si el juego no
+       acumula: ahí la secuencia se multiplica solo por sus propias bombas. */
+    accBefore = -1,
+  ): { win: number; rung: number; capped: boolean; bombs: number; bombMult: number; bombWin: number } {
     let win = 0;
     let capped = false;
     let n = 0;
@@ -183,12 +194,17 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
       if (detail && n > 200) break; // guarda contra una tira patológica
     }
 
-    // Las bombas: solo si la secuencia ganó algo.
+    // Las bombas: solo si la secuencia ganó algo. Con acumulación, el
+    // multiplicador es el total (lo que había más lo que trae esta).
     let bombs = 0;
+    let bombMult = 0;
     let bombWin = 0;
     if (values && win > 0) {
       bombs = bombSum(values);
-      if (bombs > 0) bombWin = win * (bombs - 1);
+      if (bombs > 0) {
+        bombMult = accBefore >= 0 ? accBefore + bombs : bombs;
+        bombWin = win * (bombMult - 1);
+      }
     }
     if (values && win + bombWin >= room) {
       bombWin = Math.max(0, room - win);
@@ -196,7 +212,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
       capped = true;
     }
 
-    return { win: win + bombWin, rung, capped, bombs, bombWin };
+    return { win: win + bombWin, rung, capped, bombs, bombMult, bombWin };
   }
 
   function play(rng: Rng, bet: number, ante = false): RoundResult {
@@ -204,8 +220,9 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     const stops = new Int32Array(game.reels);
     const feed = new Int32Array(game.reels);
     const strips = ante && game.anteStrips ? game.anteStrips : game.baseStrips;
-    ev.drop(strips, rng, grid, stops, feed);
-    return playFrom(rng, bet, grid, stops, feed, strips);
+    const vals = baseValuesFor(ante);
+    ev.drop(strips, rng, grid, stops, feed, vals);
+    return playFrom(rng, bet, grid, stops, feed, strips, undefined, vals);
   }
 
   /** Completa la ronda desde una caída base ya hecha (lo usa la compra). */
@@ -222,6 +239,8 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
        la otra. */
     strips: ReelStrips,
     variant?: BonusVariant,
+    /** Las bombas de la caída base, si el juego las tiene. */
+    baseVals: CellValues | null = null,
   ): RoundResult {
     const coin = bet / divisor;
     const cap = game.maxWinX * bet;
@@ -234,9 +253,10 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     const triggered = scatterCount >= game.scattersToTrigger;
 
     const gridSnapshot = Array.from(grid);
+    const baseMults = baseVals ? Array.from(baseVals.cells) : null;
     const tumbles: TumbleRecord[] = [];
     const first: { value: SpinEval | null; multiplier: number } = { value: null, multiplier: 1 };
-    const run = cascade(grid, strips, feed, coin, 0, cap - scatterWin, tumbles, first);
+    const run = cascade(grid, strips, feed, coin, 0, cap - scatterWin, tumbles, first, baseVals);
 
     const baseEval =
       first.value ?? clustersToEval(ev, [], coin, first.multiplier, scatterCount, scatterWin);
@@ -253,6 +273,8 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
       awarded: triggered ? spinsAwarded : 0,
       result: baseEval,
       ...(tumbles.length ? { tumbles } : {}),
+      ...(baseMults ? { mults: baseMults } : {}),
+      ...(run.bombWin > 0 ? { bombMult: run.bombMult, bombWin: run.bombWin } : {}),
     };
 
     const baseWin = scatterWin + run.win;
@@ -266,6 +288,8 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
       let rung = variant?.minMultiplier ? rungFor(variant.minMultiplier) : 0;
       let remaining = spinsAwarded;
       let played = 0;
+      // Multiplicador acumulado de la función (-1: este juego no acumula).
+      let acc = game.accumulateBombs ? 0 : -1;
 
       while (remaining > 0 && played < game.maxFreeSpins && !capped) {
         remaining--;
@@ -289,8 +313,9 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
         const f0: { value: SpinEval | null; multiplier: number } = { value: null, multiplier: 1 };
         const r = cascade(
           grid, game.freeStrips, fFeed, coin, rung,
-          cap - baseWin - featureWin, tt, f0, vals,
+          cap - baseWin - featureWin, tt, f0, vals, acc,
         );
+        if (acc >= 0 && r.bombs > 0) acc += r.bombs;
         if (game.freeCarriesLadder) rung = r.rung;
         featureWin += r.win;
         capped = r.capped;
@@ -306,7 +331,8 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
           awarded,
           result: evalOf,
           ...(tt.length ? { tumbles: tt } : {}),
-          ...(r.bombWin > 0 ? { bombMult: r.bombs, bombWin: r.bombWin } : {}),
+          ...(r.bombWin > 0 ? { bombMult: r.bombMult, bombWin: r.bombWin } : {}),
+          ...(acc >= 0 ? { bombTotal: acc } : {}),
         });
       }
     }
@@ -326,15 +352,16 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     const coin = bet / divisor;
     const cap = game.maxWinX * bet;
     const strips = ante && game.anteStrips ? game.anteStrips : game.baseStrips;
+    const baseVals = ante ? fastAnteValues : fastBaseValues;
 
-    ev.drop(strips, rng, fastGrid, fastStops, fastFeed);
+    ev.drop(strips, rng, fastGrid, fastStops, fastFeed, baseVals);
     const sc = ev.countScatters(fastGrid);
     const scatterWin =
       sc < game.scatterPaytable.length ? (game.scatterPaytable[sc] ?? 0) * bet : 0;
     const triggered = sc >= game.scattersToTrigger;
 
     const nada = { value: null as SpinEval | null, multiplier: 1 };
-    const run = cascade(fastGrid, strips, fastFeed, coin, 0, cap - scatterWin, null, nada);
+    const run = cascade(fastGrid, strips, fastFeed, coin, 0, cap - scatterWin, null, nada, baseVals);
     const baseWin = scatterWin + run.win;
 
     let featureWin = 0;
@@ -344,6 +371,7 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     if (triggered && !capped) {
       let rung = 0;
       let remaining = game.freeSpinsAwarded;
+      let acc = game.accumulateBombs ? 0 : -1;
       while (remaining > 0 && played < game.maxFreeSpins && !capped) {
         remaining--;
         played++;
@@ -353,8 +381,9 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
         }
         const r = cascade(
           fastGrid, game.freeStrips, fastFeed, coin, rung,
-          cap - baseWin - featureWin, null, nada, fastValues,
+          cap - baseWin - featureWin, null, nada, fastValues, acc,
         );
+        if (acc >= 0 && r.bombs > 0) acc += r.bombs;
         if (game.freeCarriesLadder) rung = r.rung;
         featureWin += r.win;
         capped = r.capped;
@@ -376,9 +405,10 @@ export function createClusterEngine(game: ClusterGameDef): RoundEngine {
     // Rechazo sobre la caída base, igual que en los otros dos motores: es la
     // distribución condicional exacta y no asigna nada por intento fallido.
     for (let i = 0; i < 10_000_000; i++) {
-      ev.drop(game.baseStrips, rng, grid, stops, feed);
+      const vals = baseValuesFor(false);
+      ev.drop(game.baseStrips, rng, grid, stops, feed, vals);
       if (ev.countScatters(grid) >= game.scattersToTrigger) {
-        return playFrom(rng, bet, grid, stops, feed, game.baseStrips, variant);
+        return playFrom(rng, bet, grid, stops, feed, game.baseStrips, variant, vals);
       }
     }
     throw new Error('playBonus: no salió un disparo en 10^7 intentos — revisar las tiras');

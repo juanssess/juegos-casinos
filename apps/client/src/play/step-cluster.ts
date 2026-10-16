@@ -29,7 +29,9 @@ export async function playClusterStep(ctx: PlayContext, step: SpinStep, roundBet
 
   if (step.kind === 'free' && step.freeIndex && step.freeTotal) {
     ctx.setFreeMode(true);
-    freeCounter.text = `GIROS GRATIS ${step.freeIndex}/${step.freeTotal}`;
+    // Con multiplicadores acumulados, el total viaja en el contador: es lo que el jugador persigue.
+    freeCounter.text = `GIROS GRATIS ${step.freeIndex}/${step.freeTotal}` +
+      (step.bombTotal !== undefined && session.accum > 0 ? ` · ×${session.accum}` : '');
   }
 
   audio.spinStart();
@@ -110,7 +112,12 @@ export async function playClusterStep(ctx: PlayContext, step: SpinStep, roundBet
     tablero.pulseValues(900 * ctx.tf());
     audio.climbUp(Math.min(6, Math.log2(m)));
     fx.shake(m >= 100 ? 12 : m >= 25 ? 8 : 4);
-    fx.announce(`×${m}`, 'las bombas multiplican el premio', 1000);
+    const acumula = step.bombTotal !== undefined;
+    fx.announce(`×${m}`, acumula ? 'multiplicador acumulado' : 'las bombas multiplican el premio', 1000);
+    if (acumula) {
+      session.accum = step.bombTotal!;
+      freeCounter.text = `GIROS GRATIS ${step.freeIndex}/${step.freeTotal} · ×${session.accum}`;
+    }
     if (m >= 25) fx.burst(Math.min(110, 30 + m / 4));
     await ctx.wait(900 * ctx.tf());
 

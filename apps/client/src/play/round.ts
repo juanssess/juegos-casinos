@@ -34,6 +34,21 @@ export async function playRound(
   // Los pegajosos son estado de la FEATURE, no del giro: se limpian al
   // empezar la ronda y no antes de cada giro.
   multLayer.clear();
+  session.accum = 0;
+  /* El contador "GIROS GRATIS 3/15" muestra los giros CONOCIDOS hasta ese
+     giro: los que dio el disparo más los retriggers que ya salieron. El total
+     de la ronda los incluye a todos, y mostrarlo desde el primer giro es
+     contar el final antes de jugarlo. */
+  let known = 0;
+  steps = steps.map((s) => {
+    if (s.kind === 'base') {
+      known = s.awarded;
+      return s;
+    }
+    const shown = known > 0 ? { ...s, freeTotal: known } : s;
+    known += s.awarded;
+    return shown;
+  });
   for (let i = 0; i < steps.length; i++) {
     const step = steps[i]!;
     const prior = running;
@@ -42,8 +57,12 @@ export async function playRound(
 
     // El primer giro gratis que se ve abre la función.
     if (step.kind === 'free' && (i === 0 || steps[i - 1]!.kind !== 'free' || i === from + 1)) {
-      // En Hold & Win se anuncian los re-giros de la regla, no cuántos va a haber.
-      const spins = profile.hold ? profile.hold.respins : step.freeTotal || 1;
+      /* Se anuncian los giros que OTORGÓ el disparo, no cuántos va a haber:
+         el total de la ronda ya incluye los retriggers que todavía no
+         salieron, y anunciarlo es contar el final antes de jugarlo. En Hold &
+         Win, los re-giros de la regla. */
+      const trigger = steps.slice(0, i).reverse().find((s) => s.kind === 'base');
+      const spins = profile.hold ? profile.hold.respins : trigger?.awarded || step.freeTotal || 1;
       if (await presentation.featureIntro(profile, spins)) session.skipRequested = false;
       presentation.featureStart(profile);
     }

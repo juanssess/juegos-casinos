@@ -76,6 +76,12 @@ export function measureCluster(
     game.payMode === 'anywhere' && game.bombValues
       ? { strips: game.bombValues, cells: new Int32Array(cells) }
       : null;
+  const baseValues: CellValues | null =
+    game.payMode === 'anywhere' && game.baseBombValues
+      ? { strips: game.baseBombValues, cells: new Int32Array(cells) }
+      : null;
+  /** Multiplicador acumulado de la función en curso (-1: no acumula). */
+  let accum = -1;
 
   const grid = ev.newGrid();
   const stops = new Int32Array(game.reels);
@@ -119,7 +125,14 @@ export function measureCluster(
     if (vals) {
       let bombs = 0;
       for (let i = 0; i < cells; i++) bombs += vals.cells[i]!;
-      const k = bombs > 0 ? bombs : 1;
+      // Mismas reglas que el motor: las bombas cuentan si la secuencia ganó.
+      let won = false;
+      for (let i = 0; i < seq.length; i++) if (seq[i]) { won = true; break; }
+      let k = 1;
+      if (won && bombs > 0) {
+        k = accum >= 0 ? accum + bombs : bombs;
+        if (accum >= 0) accum += bombs;
+      }
       for (let i = 0; i < seq.length; i++) if (seq[i]) out[i]! += seq[i]! * k;
     }
     return rung;
@@ -128,16 +141,18 @@ export function measureCluster(
   const t0 = performance.now();
 
   for (let i = 0; i < opts.rounds; i++) {
-    ev.drop(game.baseStrips, rng, grid, stops, feed);
+    ev.drop(game.baseStrips, rng, grid, stops, feed, baseValues);
     const sc = ev.countScatters(grid);
     scatter[sc]! += 1;
-    run(game.baseStrips, base, 0);
+    accum = -1;
+    run(game.baseStrips, base, 0, baseValues);
 
     if (sc >= game.scattersToTrigger) {
       triggers++;
       let rung = 0;
       let remaining = game.freeSpinsAwarded;
       let played = 0;
+      accum = game.accumulateBombs ? 0 : -1;
       while (remaining > 0 && played < game.maxFreeSpins) {
         remaining--;
         played++;

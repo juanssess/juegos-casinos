@@ -6,7 +6,7 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "6c31e70cc38d142f",
+  "sourceHash": "9f78eca1b207e4c4",
   "rounds": 800000000,
   "targetRtp": 0.965,
   "rtp": 0.9653447197082715,
@@ -26,9 +26,9 @@ export const QA: QaSummary | null = {
       "variant": "simple",
       "label": "La Cosecha",
       "priceX": 56.6,
-      "ev": 54.68782564999992,
-      "evCi": 0.1023706597678726,
-      "rtp": 0.9662160008833909,
+      "ev": 54.687825649999915,
+      "evCi": 0.10237065976787262,
+      "rtp": 0.9662160008833907,
       "buys": 2000000
     },
     {
@@ -52,7 +52,7 @@ export const QA: QaSummary | null = {
   ],
   "ante": {
     "costX": 1.63,
-    "rtp": 0.9636999805157908,
+    "rtp": 0.9636999805157909,
     "rtpCi": 0.0008351664742699941,
     "triggerOneIn": 43.30869790234322,
     "rounds": 400000000

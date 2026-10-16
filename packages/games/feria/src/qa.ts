@@ -6,7 +6,7 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "d3d9bb67cad697a0",
+  "sourceHash": "c5485dcdefaa871b",
   "rounds": 800000000,
   "targetRtp": 0.965,
   "rtp": 0.965289465625,

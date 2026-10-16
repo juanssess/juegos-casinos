@@ -82,6 +82,8 @@ export interface SpinRecord {
    */
   bombMult?: number;
   bombWin?: number;
+  /** Multiplicadores acumulados: el total después de este giro. */
+  bombTotal?: number;
   /** Hold & Win: un re-giro de la función (ver holdwin.ts). */
   hold?: HoldRecord;
 }

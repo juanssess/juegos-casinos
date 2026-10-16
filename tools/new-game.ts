@@ -11,6 +11,7 @@
  *   racimos         6×5, racimos con cascadas y escalera   → vendimia
  *   cualquier-lado  6×5, 8 iguales en cualquier lado y bombas → kiosco
  *   hold-win        5×3, monedas que se quedan y re-giros      → feria
+ *   acumulados      6×5, cualquier lado, multiplicadores que se suman → carnaval
  *
  * Por qué COPIAR un juego entero y no partir de una plantilla vacía: el molde
  * es un juego que ya pasó el QA. El juego nuevo arranca jugable, con la
@@ -39,6 +40,7 @@ const MECHANICS: Record<string, string> = {
   racimos: 'vendimia',
   'cualquier-lado': 'kiosco',
   'hold-win': 'feria',
+  acumulados: 'carnaval',
 };
 
 function arg(name: string): string | undefined {

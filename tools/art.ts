@@ -47,7 +47,9 @@ const cmd = process.argv[2];
 /* ── La receta de la casa ─────────────────────────────────────────────────
    Salió de El Kiosco (octubre 2026): la primera hoja vino con piso y sombras
    de contacto y el recorte dejaba manchones; la primera escena salió con
-   contornos de historieta y letras. Estas frases son las que lo arreglaron. */
+   contornos de historieta y letras. En El Carnaval, "centro oscuro" se leyó
+   como un rectángulo vacío pintado en el medio, y coló una bailarina. Estas
+   frases son las que lo arreglaron. */
 const SHEET_COLS = 3;
 const SHEET_ROWS = 4;
 
@@ -77,10 +79,11 @@ function scenePrompt(m: GameManifest): string {
     'Square casino slot game backdrop, premium digital matte painting with cinematic painterly realism: soft brushwork,',
     'no outlines, no ink lines, no comic or cartoon style, no cel shading.',
     `Scene: ${m.art.scene}.`,
-    'Detail pushed to the edges and corners. The CENTER of the image, about 65 percent of the width and height, is calm,',
-    'darker and low-detail, unobstructed, so a game reel board can sit on top. High production value, rich textures,',
-    'restrained warm and cool contrast. Absolutely no text, no letters, no words, no signs with writing, no logos,',
-    'no people, no slot UI, no watermark, no emoji.',
+    'One seamless continuous scene. Detail pushed to the edges and corners; toward the CENTER the scene simply gets',
+    'calmer, darker and softer (night sky, haze, bokeh) so a game reel board can sit on top. Do NOT draw an empty',
+    'rectangle, panel, frame, window or placeholder in the center: the darkness is atmosphere, not a shape.',
+    'High production value, rich textures, restrained warm and cool contrast. Absolutely no text, no letters, no words,',
+    'no signs with writing, no logos, no people, no human figures, no dancers, no slot UI, no watermark, no emoji.',
   ].join('\n');
 }
 

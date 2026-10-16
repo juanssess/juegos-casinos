@@ -8,7 +8,7 @@ Tema: la feria de antigüedades de San Telmo. Todo número sale del motor real.
 ## QA automático — APROBADO
 
 Generado por `npm run qa -- --game feria` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `d3d9bb67cad697a0`.
+Huella de la matemática: `c5485dcdefaa871b`.
 
 | | |
 |---|---|

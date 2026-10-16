@@ -175,6 +175,8 @@ export interface SpinStep {
    */
   bombMult?: number;
   bombWin?: Credits;
+  /** Multiplicadores acumulados: el total después de este giro. */
+  bombTotal?: number;
   /**
    * Hold & Win: este paso es un re-giro. `mults` trae el valor de cada moneda
    * fija (en veces la apuesta, 0 = celda vacía) y `grid` muestra la moneda

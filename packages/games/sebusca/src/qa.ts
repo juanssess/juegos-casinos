@@ -6,13 +6,13 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "9068dec879863b26",
+  "sourceHash": "6541feb477a41755",
   "rounds": 2703285120,
   "targetRtp": 0.965,
-  "rtp": 0.9659237039876007,
+  "rtp": 0.9659237039876016,
   "rtpCi": 0.001357473344556722,
-  "rtpBase": 0.41285034244138097,
-  "rtpFeature": 0.553073361594407,
+  "rtpBase": 0.4128503424413811,
+  "rtpFeature": 0.5530733615944071,
   "hitFrequency": 0.3275800249290759,
   "triggerOneIn": 258.08562670051947,
   "freeSpinsPerTrigger": 8.068343661238721,
@@ -26,27 +26,27 @@ export const QA: QaSummary | null = {
       "variant": "simple",
       "label": "La Cacería",
       "priceX": 151,
-      "ev": 145.89806513333758,
-      "evCi": 0.7752902807071722,
-      "rtp": 0.9662123518764079,
+      "ev": 145.89806513333764,
+      "evCi": 0.775290280707172,
+      "rtp": 0.9662123518764082,
       "buys": 2000000
     },
     {
       "variant": "larga",
       "label": "Cacería larga",
       "priceX": 472,
-      "ev": 456.76370993332864,
-      "evCi": 1.5667244695573137,
-      "rtp": 0.9677197244350183,
+      "ev": 456.7637099333287,
+      "evCi": 1.5667244695573135,
+      "rtp": 0.9677197244350184,
       "buys": 2000000
     },
     {
       "variant": "completa",
       "label": "Cacería completa",
       "priceX": 1048,
-      "ev": 1014.6825915333326,
+      "ev": 1014.6825915333327,
       "evCi": 2.47941666970399,
-      "rtp": 0.9682085797073784,
+      "rtp": 0.9682085797073785,
       "buys": 2000000
     }
   ],

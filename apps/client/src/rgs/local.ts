@@ -110,6 +110,7 @@ export function roundToSteps(game: SlotGameDef, result: RoundResult): SpinStep[]
       ...(tumbles.length ? { tumbles } : {}),
       ...(rec.bombWin ? { bombMult: rec.bombMult, bombWin: rec.bombWin } : {}),
       ...(rec.hold ? { hold: rec.hold } : {}),
+      ...(rec.bombTotal !== undefined ? { bombTotal: rec.bombTotal } : {}),
     };
   };
 

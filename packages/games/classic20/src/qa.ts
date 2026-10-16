@@ -6,12 +6,12 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-15",
-  "sourceHash": "9bb4aab6a85e216c",
+  "sourceHash": "d94e905de9d6785a",
   "rounds": 800000000,
   "targetRtp": 0.965,
-  "rtp": 0.9666453531052619,
+  "rtp": 0.9666453531052618,
   "rtpCi": 0.0006433906872936964,
-  "rtpBase": 0.6093841745672351,
+  "rtpBase": 0.6093841745672354,
   "rtpFeature": 0.3572611785624723,
   "hitFrequency": 0.2972896125,
   "triggerOneIn": 209.24857789435248,
@@ -26,34 +26,34 @@ export const QA: QaSummary | null = {
       "variant": "simple",
       "label": "La Escalinata",
       "priceX": 80,
-      "ev": 77.46707372500059,
-      "evCi": 0.147291601706947,
-      "rtp": 0.9683384215625074,
+      "ev": 77.46707372500057,
+      "evCi": 0.14729160170694705,
+      "rtp": 0.9683384215625072,
       "buys": 2000000
     },
     {
       "variant": "dorada",
       "label": "Escalinata dorada",
       "priceX": 114,
-      "ev": 109.77915135001798,
-      "evCi": 0.17472975354201672,
-      "rtp": 0.962975011842263,
+      "ev": 109.77915135001795,
+      "evCi": 0.17472975354201675,
+      "rtp": 0.9629750118422628,
       "buys": 2000000
     },
     {
       "variant": "cima",
       "label": "La Cima",
       "priceX": 292,
-      "ev": 281.65582719999105,
-      "evCi": 0.34788548743832903,
-      "rtp": 0.9645747506849008,
+      "ev": 281.6558271999911,
+      "evCi": 0.347885487438329,
+      "rtp": 0.9645747506849011,
       "buys": 2000000
     }
   ],
   "ante": {
     "costX": 1.75,
-    "rtp": 0.9678749745645535,
-    "rtpCi": 0.000888999783266816,
+    "rtp": 0.9678749745645534,
+    "rtpCi": 0.0008889997832668162,
     "triggerOneIn": 68.86133479089825,
     "rounds": 400000000
   },

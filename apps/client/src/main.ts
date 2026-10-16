@@ -333,7 +333,7 @@ async function main(): Promise<void> {
     },
   };
 
-  const session: Session = { turbo: false, skipRequested: false, simTime: 0 };
+  const session: Session = { turbo: false, skipRequested: false, simTime: 0, accum: 0 };
   try {
     session.turbo = localStorage.getItem(`turbo.${profile.id}`) === '1';
   } catch { /* sin storage */ }
