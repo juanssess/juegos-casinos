@@ -6,11 +6,137 @@
     "background": "scene.jpg",
     "characters": "actors.png",
     "symbols": "symbols.png",
-    "originals": "source/"
+    "originals": "source/",
+    "bonusCharacters": "chase.png"
   },
   "prompts": {
     "zoneScene": "Use case: stylized-concept. Asset type: wide painted game background, landscape 1536x1024. Primary request: atmospheric abandoned city street at night for a zombie survival slot game called Zona Muerta. Scene: ruined Argentine urban avenue, barricades, abandoned bus at far right, boarded shopfront at left, teal-green fog, small distant orange emergency lamps, overhead broken wires, wet pavement, dramatic moonlight. Premium hand-painted cinematic game art, richly detailed, believable materials, mature horror atmosphere without gore. Composition: quiet very dark central 55 percent reserved for a game board; detailed architecture and pools of light on far left and right where separately animated survivor and zombie will stand. No people or zombies painted into background because they are separate animated layers. No interface, no board, no lettering, no logos or watermark.",
     "zoneActors": "Use case: stylized-concept. Asset type: transparent character animation sprite sheet for a premium hand-painted zombie survival game. Exactly 3 columns by 2 rows, six equal cells, no grid drawn. Each cell contains a complete full-body character with feet on the same baseline and generous padding, same scale, no cropping. Top row: SAME adult female survivor in three consecutive subtle idle poses: neutral holding flashlight at waist, looking over her shoulder, cautiously raising flashlight. Worn olive jacket, dark cargo pants, short dark hair, amber flashlight glow, believable anatomy, confident expression. Bottom row: SAME male zombie in three subtle idle poses, neutral hunched, weight on left foot with shoulder dropped, weight on right foot with arm extended; torn dark coat, pallid grey-green face, sunken eyes, decayed clothing but no exposed organs or gore. Full-body hand-painted cinematic game illustration, moody teal and warm amber rim lighting, detailed expressive faces, readable silhouettes, crisp edges. Background must be truly transparent alpha, no checkerboard, no text, no shadows outside character feet, no objects crossing cell boundaries. Format wide 1536x1024, each cell 512x512.",
-    "zoneSymbols": "Use case: stylized-concept. Asset type: production slot game symbol sprite sheet, transparent background. Exactly 3 columns and 4 rows, twelve equal cells, no grid lines. Objects isolated at cell centers with wide transparent padding and occupying at most 65 percent of each cell. Premium detailed hand-painted cinematic zombie survival game items, worn materials, cool teal edges and amber highlights, readable rich 3D silhouettes, consistent lighting. Reading order left to right top to bottom: 1 crossed reinforced barricade planks with steel bolts (wild); 2 old emergency field radio with glowing green dial (bonus); 3 glass antiviral serum vial with luminous amber fluid; 4 red emergency fuel can; 5 ammunition box with brass cartridges; 6 worn metal flashlight; 7 olive medical pouch with a red cross; 8 dark military gas mask with round filters. Cells 9,10,11,12 completely empty transparent. No text or numbers or lettering on any object, no UI, no backgrounds, no people, no watermark. True alpha transparency. Portrait 1024x1536."
+    "zoneSymbols": "Use case: stylized-concept. Asset type: production slot game symbol sprite sheet, transparent background. Exactly 3 columns and 4 rows, twelve equal cells, no grid lines. Objects isolated at cell centers with wide transparent padding and occupying at most 65 percent of each cell. Premium detailed hand-painted cinematic zombie survival game items, worn materials, cool teal edges and amber highlights, readable rich 3D silhouettes, consistent lighting. Reading order left to right top to bottom: 1 crossed reinforced barricade planks with steel bolts (wild); 2 old emergency field radio with glowing green dial (bonus); 3 glass antiviral serum vial with luminous amber fluid; 4 red emergency fuel can; 5 ammunition box with brass cartridges; 6 worn metal flashlight; 7 olive medical pouch with a red cross; 8 dark military gas mask with round filters. Cells 9,10,11,12 completely empty transparent. No text or numbers or lettering on any object, no UI, no backgrounds, no people, no watermark. True alpha transparency. Portrait 1024x1536.",
+    "chase": "Use case: stylized-concept. Production animation sprite sheet for existing zombie survival slot. Reference image preserves exact identities, costumes, realistic cinematic painted rendering. New transparent sprite sheet EXACTLY 4 columns by 4 rows, 16 equal square cells, no drawn grid or text. Top TWO rows = 8 consecutive frames of SAME adult female survivor from reference running urgently toward LEFT, looking back over right shoulder in fear, flashlight held low, short dark hair, worn olive jacket, cargo pants, boots, small backpack. Bottom TWO rows = 8 consecutive frames of SAME male zombie from reference charging violently toward LEFT, hunched shoulders, arms reaching, open snarling mouth, torn dark coat. Clear changing articulated leg/arm poses forming smooth repeating running cycles, contact/down/passing/up opposite legs. SAME full body scale and feet baseline in every cell, generous 12 percent padding, no cropping, consistent proportions and camera three-quarter side view. Believable anatomy and physical weight, detailed faces/materials, teal moon rimlight and subtle red emergency rimlight. No gore. No extra characters, no weapons added, no captions, no UI, no background or ground or checkerboard. Truly transparent alpha. Square 2048x2048."
+  },
+  "derivatives": {
+    "bonusSymbol": {
+      "symbol": 0,
+      "source": "chase.png",
+      "crop": {
+        "left": 0,
+        "top": 800,
+        "width": 400,
+        "height": 400
+      },
+      "operation": "Crop own generated character, preserve alpha and contain 264x264 within 320 cell."
+    },
+    "actionAtlas": {
+      "source": "source/chase.png",
+      "frames": [
+        {
+          "left": 49,
+          "top": 10,
+          "width": 260,
+          "height": 328
+        },
+        {
+          "left": 363,
+          "top": 11,
+          "width": 220,
+          "height": 327
+        },
+        {
+          "left": 646,
+          "top": 6,
+          "width": 297,
+          "height": 330
+        },
+        {
+          "left": 1008,
+          "top": 7,
+          "width": 225,
+          "height": 331
+        },
+        {
+          "left": 66,
+          "top": 342,
+          "width": 230,
+          "height": 316
+        },
+        {
+          "left": 376,
+          "top": 341,
+          "width": 240,
+          "height": 321
+        },
+        {
+          "left": 655,
+          "top": 341,
+          "width": 295,
+          "height": 315
+        },
+        {
+          "left": 1013,
+          "top": 340,
+          "width": 200,
+          "height": 323
+        },
+        {
+          "left": 17,
+          "top": 665,
+          "width": 303,
+          "height": 285
+        },
+        {
+          "left": 336,
+          "top": 663,
+          "width": 290,
+          "height": 285
+        },
+        {
+          "left": 646,
+          "top": 671,
+          "width": 310,
+          "height": 273
+        },
+        {
+          "left": 963,
+          "top": 673,
+          "width": 279,
+          "height": 279
+        },
+        {
+          "left": 16,
+          "top": 958,
+          "width": 289,
+          "height": 277
+        },
+        {
+          "left": 335,
+          "top": 953,
+          "width": 278,
+          "height": 282
+        },
+        {
+          "left": 640,
+          "top": 951,
+          "width": 308,
+          "height": 270
+        },
+        {
+          "left": 942,
+          "top": 955,
+          "width": 297,
+          "height": 281
+        }
+      ],
+      "cell": 400,
+      "cols": 4,
+      "baseline": 384,
+      "operation": "Deterministic atlas packing of sixteen isolated characters. Preserve original alpha and scale; normalize cells and foot baseline."
+    }
+  },
+  "generation": {
+    "tool": "Built-in image_gen",
+    "reference": "actors.png",
+    "output": "source/chase.png",
+    "transparent_background": true
   }
 }

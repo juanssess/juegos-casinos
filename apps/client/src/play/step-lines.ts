@@ -62,7 +62,7 @@ export async function playLinesStep(ctx: PlayContext, step: SpinStep, roundBet: 
       fx.burst(45);
       await ctx.wait(1500 * ctx.tf());
     } else if (!ctx.hasClimb) {
-      fx.announce('¡GIROS GRATIS!', `${step.awarded} giros · los wilds se quedan`, 1200);
+      fx.announce(ctx.profile.id==='lafamilia'?'¡GUERRA DE FAMILIAS!':'¡GIROS GRATIS!', ctx.profile.id==='lafamilia'?`${step.awarded} giros · balas, bandas y la bóveda`:`${step.awarded} giros · los wilds se quedan`, 1200);
       fx.burst(45);
       await ctx.wait(1500 * ctx.tf());
     } else {

@@ -38,6 +38,7 @@ import {
   type SpinResponse,
   type SpinStep,
   type TumbleDto,
+  type StoryBonusDto,
 } from '@casino/protocol';
 
 // Una billetera por juego: mezclar el estado de dos juegos distintos en la
@@ -96,8 +97,10 @@ export function roundToSteps(game: SlotGameDef, result: RoundResult): SpinStep[]
     let win = rec.result.totalWin + (rec.bombWin ?? 0) + (rec.hold?.collect ?? 0);
     for (const t of tumbles) win += t.win;
 
+    const story=(rec as SpinRecord & {story?:StoryBonusDto}).story;
     return {
       kind,
+      ...(story ? {story} : {}),
       grid: rec.grid,
       stops: rec.stops,
       ...(rec.mults ? { mults: rec.mults } : {}),

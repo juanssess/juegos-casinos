@@ -13,9 +13,12 @@ import type { PlayContext } from './context.ts';
 import { playClusterStep } from './step-cluster.ts';
 import { playLinesStep } from './step-lines.ts';
 import { playHoldStep } from './step-hold.ts';
+import { playStoryStep, clearStoryBonus, playLegacyStoryHold } from './step-story.ts';
 
 /** `prior` es lo ya ganado en la ronda antes de este paso (el cobro del Hold & Win cuenta desde ahí). */
 export function playStep(ctx: PlayContext, step: SpinStep, roundBet: number, prior = 0): Promise<void> {
+  if (step.hold && !ctx.profile.hold && ctx.profile.id === 'lafamilia') return playLegacyStoryHold(ctx, step, roundBet);
+  if (step.story) return playStoryStep(ctx, step, roundBet);
   if (ctx.profile.hold && step.hold) return playHoldStep(ctx, step, roundBet, prior);
   return ctx.profile.cluster ? playClusterStep(ctx, step, roundBet) : playLinesStep(ctx, step, roundBet);
 }
@@ -49,61 +52,65 @@ export async function playRound(
     known += s.awarded;
     return shown;
   });
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i]!;
-    const prior = running;
-    running += step.win;
-    if (i <= from) continue; // ya visto antes de recargar la página
+  try {
+    for (let i = 0; i < steps.length; i++) {
+      const step = steps[i]!;
+      const prior = running;
+      running += step.win;
+      if (i <= from) continue; // ya visto antes de recargar la página
 
-    // El primer giro gratis que se ve abre la función.
-    if (step.kind === 'free' && (i === 0 || steps[i - 1]!.kind !== 'free' || i === from + 1)) {
-      /* Se anuncian los giros que OTORGÓ el disparo, no cuántos va a haber:
-         el total de la ronda ya incluye los retriggers que todavía no
-         salieron, y anunciarlo es contar el final antes de jugarlo. En Hold &
-         Win, los re-giros de la regla. */
-      const trigger = steps.slice(0, i).reverse().find((s) => s.kind === 'base');
-      const spins = profile.hold ? profile.hold.respins : trigger?.awarded || step.freeTotal || 1;
-      if (await presentation.featureIntro(profile, spins)) session.skipRequested = false;
-      presentation.featureStart(profile);
+      // El primer giro gratis que se ve abre la función.
+      if (step.kind === 'free' && (i === 0 || steps[i - 1]!.kind !== 'free' || i === from + 1)) {
+        /* Se anuncian los giros que OTORGÓ el disparo, no cuántos va a haber:
+           el total de la ronda ya incluye los retriggers que todavía no
+           salieron, y anunciarlo es contar el final antes de jugarlo. En Hold &
+           Win, los re-giros de la regla. */
+        const trigger = steps.slice(0, i).reverse().find((s) => s.kind === 'base');
+        const spins = profile.hold ? profile.hold.respins : trigger?.awarded || step.freeTotal || 1;
+        if (!(step.hold&&!profile.hold) && await presentation.featureIntro(profile, spins)) session.skipRequested = false;
+        presentation.featureStart(profile);
+      }
+
+      await playStep(ctx, step, roundBet, prior);
+
+      // Tras el giro que disparó viene la Escalinata: el bonus se gana dos
+      // veces — primero el disparo, después la escalada.
+      if (i === 0 && climb && steps.length > 1 && !session.skipRequested) {
+        await ctx.climbScene.play(climb, cfg.climbTiers, ctx.wait, {
+          drum: () => audio.drum(),
+          up: (t) => audio.climbUp(t),
+          stop: () => audio.climbStop(),
+          top: () => audio.climbTop(),
+        });
+        const atTop = climb.tier === cfg.climbTiers.length;
+        fx.announce(
+          `${climb.spins} GIROS ×${climb.multiplier}`,
+          atTop ? 'la Cámara del Sol' : `nivel ${climb.tier} de la Escalinata`,
+          1100,
+        );
+        fx.burst(25 + climb.tier * 18);
+        if (atTop) fx.shake(10);
+        await ctx.wait(900 * ctx.tf());
+      }
+
+      hud.countTo(running, 400);
+      if (i > 0) await ctx.wait(TIMING.freeSpinGap * ctx.tf());
+      await rgs.acknowledge(roundId, i);
     }
+    hud.hideBanner();
 
-    await playStep(ctx, step, roundBet, prior);
-
-    // Tras el giro que disparó viene la Escalinata: el bonus se gana dos
-    // veces — primero el disparo, después la escalada.
-    if (i === 0 && climb && steps.length > 1 && !session.skipRequested) {
-      await ctx.climbScene.play(climb, cfg.climbTiers, ctx.wait, {
-        drum: () => audio.drum(),
-        up: (t) => audio.climbUp(t),
-        stop: () => audio.climbStop(),
-        top: () => audio.climbTop(),
-      });
-      const atTop = climb.tier === cfg.climbTiers.length;
-      fx.announce(
-        `${climb.spins} GIROS ×${climb.multiplier}`,
-        atTop ? 'la Cámara del Sol' : `nivel ${climb.tier} de la Escalinata`,
-        1100,
-      );
-      fx.burst(25 + climb.tier * 18);
-      if (atTop) fx.shake(10);
-      await ctx.wait(900 * ctx.tf());
+    const freeSteps = steps.filter((s) => s.kind === 'free');
+    if (freeSteps.length && from < steps.length - 1) {
+      await presentation.featureSummary(profile, freeSteps.length, freeSteps.reduce((sum, s) => sum + s.win, 0));
     }
-
-    hud.countTo(running, 400);
-    if (i > 0) await ctx.wait(TIMING.freeSpinGap * ctx.tf());
-    await rgs.acknowledge(roundId, i);
+  } finally {
+    clearStoryBonus(ctx);
+    presentation.featureEnd();
+    ctx.setFreeMode(false);
+    multLayer.clear();
+    ctx.holdBoard?.clear();
+    ctx.layout();
   }
-  hud.hideBanner();
-
-  const freeSteps = steps.filter((s) => s.kind === 'free');
-  if (freeSteps.length && from < steps.length - 1) {
-    await presentation.featureSummary(profile, freeSteps.length, freeSteps.reduce((sum, s) => sum + s.win, 0));
-  }
-  presentation.featureEnd();
-  ctx.setFreeMode(false);
-  multLayer.clear();
-  ctx.holdBoard?.clear();
-  ctx.layout();
 }
 
 /** Celebración proporcional al premio. Si todo se celebra igual, nada se celebra. */

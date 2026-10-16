@@ -4,30 +4,30 @@
 ## QA automático — APROBADO
 
 Generado por `npm run qa -- --game zonamuerta` el 2026-10-16. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `dcc410e0f6c4b937`.
+Huella de la matemática: `9e523844b1311a10`.
 
 | | |
 |---|---|
-| RTP | **96,50 % ± 0,12** (200M de rondas; objetivo 96,50 %) |
-| Reparto | base 52,69 % · giros gratis 43,81 % |
+| RTP | **96,50 % ± 0,10** (200M de rondas; objetivo 96,50 %) |
+| Reparto | base 54,34 % · giros gratis 42,16 % |
 | Frecuencia de premio | 46,4 % |
-| Bonus | 1 de cada 115 rondas · 8,02 giros por disparo |
-| Volatilidad | media-alta (índice 14,1; desvío 8,59) |
-| Tope | 5.000× · mayor premio medido 5000× |
-| Compra "El búnker" | 56,6× · EV 54,76× ± 0,1 (2M) → RTP 96,75 % |
-| Compra "La azotea" | 138,6× · EV 133,81× ± 0,17 (2M) → RTP 96,54 % |
-| Compra "El laboratorio" | 93,6× · EV 90,51× ± 0,13 (2M) → RTP 96,70 % |
-| Apuesta ante | 1,63× · RTP 96,21 % ± 0,17 · bonus 1 de cada 43 |
+| Bonus | 1 de cada 115 rondas · 8,00 giros por disparo |
+| Volatilidad | media-alta (índice 11,5; desvío 6,97) |
+| Tope | 5.000× · mayor premio medido 4861× |
+| Compra "La cacería" | 54,7× · EV 52,74× ± 0,07 (2M) → RTP 96,41 % |
+| Compra "Noche sin salida" | 94,5× · EV 91,21× ± 0,11 (2M) → RTP 96,52 % |
+| Compra "Contagio avanzado" | 104× · EV 100,12× ± 0,13 (2M) → RTP 96,27 % |
+| Apuesta ante | 1,59× · RTP 96,51 % ± 0,14 · bonus 1 de cada 43 |
 
 Controles:
 
-- ✓ RTP 96,50 % ± 0,12 contra el objetivo 96,50 % (tolerancia ±0,20)
-- ✓ precisión de la medición ±0,12 puntos (máximo ±0,15; si no alcanza, más rondas)
-- ✓ compra "El búnker" a 56,6×: EV 54,76× ± 0,1 → RTP 96,75 % (tolerancia ±0,50)
-- ✓ compra "La azotea" a 138,6×: EV 133,81× ± 0,17 → RTP 96,54 % (tolerancia ±0,50)
-- ✓ compra "El laboratorio" a 93,6×: EV 90,51× ± 0,13 → RTP 96,70 % (tolerancia ±0,50)
-- ✓ ante a 1,63×: RTP 96,21 % ± 0,17, -0,29 puntos contra el juego normal (admitido de -0,50 a +1,00)
-- ✓ tope 5.000×: el mayor premio medido fue 5000× (tiene que llegar al 50 % del tope para no ser decorativo)
+- ✓ RTP 96,50 % ± 0,10 contra el objetivo 96,50 % (tolerancia ±0,20)
+- ✓ precisión de la medición ±0,10 puntos (máximo ±0,15; si no alcanza, más rondas)
+- ✓ compra "La cacería" a 54,7×: EV 52,74× ± 0,07 → RTP 96,41 % (tolerancia ±0,50)
+- ✓ compra "Noche sin salida" a 94,5×: EV 91,21× ± 0,11 → RTP 96,52 % (tolerancia ±0,50)
+- ✓ compra "Contagio avanzado" a 104×: EV 100,12× ± 0,13 → RTP 96,27 % (tolerancia ±0,50)
+- ✓ ante a 1,59×: RTP 96,51 % ± 0,14, +0,01 puntos contra el juego normal (admitido de -0,50 a +1,00)
+- ✓ tope 5.000×: el mayor premio medido fue 4861× (tiene que llegar al 50 % del tope para no ser decorativo)
 - ⚠ frecuencia de premio 46,4 % (el mercado: 25 % a 35 %)
 - ⚠ bonus 1 de cada 115 rondas (el mercado: de 150 a 400)
 - ✓ tope 5.000× (el mercado: 5.000× a 25.000×)

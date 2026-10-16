@@ -4,25 +4,25 @@
 ## QA automático — APROBADO
 
 Generado por `npm run qa -- --game lafamilia` el 2026-10-16. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `0fec65911159918b`.
+Huella de la matemática: `afec58e7a4025c5b`.
 
 | | |
 |---|---|
-| RTP | **96,59 % ± 0,14** (346,793M de rondas; objetivo 96,50 %) |
-| Reparto | base 70,45 % · giros gratis 26,13 % |
+| RTP | **96,47 % ± 0,14** (264,884M de rondas; objetivo 96,50 %) |
+| Reparto | base 70,69 % · giros gratis 25,78 % |
 | Frecuencia de premio | 22,6 % |
-| Bonus | 1 de cada 170 rondas · 5,90 giros por disparo |
-| Volatilidad | alta (índice 21,2; desvío 12,90) |
+| Bonus | 1 de cada 170 rondas · 11,57 giros por disparo |
+| Volatilidad | alta (índice 18,4; desvío 11,21) |
 | Tope | 5.000× · mayor premio medido 5000× |
-| Compra "El golpe al banco" | 46,2× · EV 44,44× ± 0,21 (2M) → RTP 96,18 % |
-| Apuesta ante | 1,19× · RTP 96,31 % ± 0,30 · bonus 1 de cada 86 |
+| Compra "Guerra de familias" | 45,4× · EV 43,8× ± 0,18 (2M) → RTP 96,48 % |
+| Apuesta ante | 1,22× · RTP 96,93 % ± 0,24 · bonus 1 de cada 86 |
 
 Controles:
 
-- ✓ RTP 96,59 % ± 0,14 contra el objetivo 96,50 % (tolerancia ±0,20)
+- ✓ RTP 96,47 % ± 0,14 contra el objetivo 96,50 % (tolerancia ±0,20)
 - ✓ precisión de la medición ±0,14 puntos (máximo ±0,15; si no alcanza, más rondas)
-- ✓ compra "El golpe al banco" a 46,2×: EV 44,44× ± 0,21 → RTP 96,18 % (tolerancia ±0,50)
-- ✓ ante a 1,19×: RTP 96,31 % ± 0,30, -0,28 puntos contra el juego normal (admitido de -0,50 a +1,00)
+- ✓ compra "Guerra de familias" a 45,4×: EV 43,8× ± 0,18 → RTP 96,48 % (tolerancia ±0,50)
+- ✓ ante a 1,22×: RTP 96,93 % ± 0,24, +0,47 puntos contra el juego normal (admitido de -0,50 a +1,00)
 - ✓ tope 5.000×: el mayor premio medido fue 5000× (tiene que llegar al 50 % del tope para no ser decorativo)
 - ⚠ frecuencia de premio 22,6 % (el mercado: 25 % a 35 %)
 - ✓ bonus 1 de cada 170 rondas (el mercado: de 150 a 400)

@@ -13,5 +13,18 @@
     "familyActors": "Use case: stylized-concept. Asset type: transparent full-body character animation sprite sheet for a premium hand-painted 1930s mafia game. Exactly 3 equally wide columns, one row. SAME fictional adult male gangster shown in three subtle idle/action poses, feet aligned on same baseline, identical body size and clothing, complete body from hat to shoes with generous empty padding. Black pinstripe three-piece suit, burgundy tie and pocket square, dark fedora, polished black shoes, mature stern face, brass watch chain. Holds a period Thompson submachine gun angled down and safely away from viewer. Frame 1 neutral relaxed stance with gun low; frame 2 shifts weight and glances sideways, hand adjusts lapel while gun stays in other hand; frame 3 alert ready stance with gun across body, never firing. Premium expressive hand-painted cinematic illustrated game character, warm amber rim lighting, burgundy reflections, crisp silhouette, believable human anatomy. Background truly transparent alpha, no checkerboard, no scene or text or logos. Each character entirely within its equal cell, aligned scale for animation. Landscape 1536x1024.",
     "familySymbols": "Use case: stylized-concept. Asset type: production slot game symbol sprite sheet, transparent background. Exactly 3 columns by 4 rows, twelve equal cells, no grid lines. Eleven luxurious 1930s mafia noir objects, each isolated and centered within its equal cell, occupying at most 65 percent of cell with generous transparent margins, premium hand-painted realistic game art, warm amber brass lighting, rich burgundy and polished walnut, consistent scale. Reading order: 1 ornate gold family signet ring (wild); 2 tied burgundy velvet money bag stuffed with golden coins (bonus); 3 miniature open steel bank vault with gold bars inside; 4 elegant dark fedora with burgundy hat band; 5 period Thompson submachine gun with wooden stock shown diagonally; 6 cut crystal whisky tumbler; 7 polished brass pocket watch; 8 leather ledger with brass clasp; 9 black vintage luxury car seen in three-quarter front view; 10 red rose with green leaves; 11 burgundy and gold poker chips. Cell 12 empty transparent. No text, numbers, letters, logos, scene, people, labels or watermark. True transparent alpha, no checkerboard. Portrait 1024x1536.",
     "familySymbolsRevision": "Edit the referenced transparent sprite sheet only. Preserve all eleven mafia objects, reading order, painting style, colors, materials and lighting. Preserve TRUE ALPHA transparency. Recompose into an EXACT uniform 3-column x 4-row grid of equal cells. REDUCE every object to at most 65% of its cell width AND height, centered, leaving generous completely transparent margins on every side. No part of any object, chain, barrel or highlight may cross a cell boundary. This is a game atlas and must be cleanly cropped by equal cell boundaries without any fragment of neighboring objects. Same objects/order: gold signet ring; money bag; open vault; fedora; Thompson; whisky; pocket watch; leather ledger; vintage car; rose; poker chips; last cell empty. No writing, labels, backgrounds or grid lines. Portrait 1024x1536."
+  },
+  "derivatives": {
+    "bonusSymbol": {
+      "symbol": 2,
+      "source": "actors.png",
+      "crop": {
+        "left": 85,
+        "top": 0,
+        "width": 370,
+        "height": 500
+      },
+      "operation": "Crop own generated character, preserve alpha and contain 264x264 within 320 cell."
+    }
   }
 }

@@ -138,7 +138,13 @@ export interface TumbleDto {
  * Un giro dentro de la ronda: el base o uno de los gratis.
  * El cliente reproduce estos pasos en orden.
  */
+/** Optional thematic feature state. Produced by the engine, never inferred by the UI. */
+export type StoryBonusDto =
+ | {kind:'hunt';hunters:{cell:number;power:number}[];moves:{from:number;to:number;power:number}[];rawGrid:number[];left:number}
+ | {kind:'war';rawGrid:number[];hp:number[];before:number[];bullets:number;defeated:number[];promoted:number[];safes:number[];collect:Credits;cashHit:boolean;left:number};
+
 export interface SpinStep {
+  story?: StoryBonusDto;
   kind: 'base' | 'free';
   /** Ventana visible, plana: `grid[reel * rows + row]`. */
   grid: number[];

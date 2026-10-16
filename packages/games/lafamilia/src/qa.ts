@@ -6,37 +6,37 @@ import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
   "date": "2026-10-16",
-  "sourceHash": "0fec65911159918b",
-  "rounds": 346793344,
+  "sourceHash": "afec58e7a4025c5b",
+  "rounds": 264884064,
   "targetRtp": 0.965,
-  "rtp": 0.9658706353372226,
-  "rtpCi": 0.0013577548517815362,
-  "rtpBase": 0.7045272378411046,
-  "rtpFeature": 0.261343397496118,
-  "hitFrequency": 0.22583522537272227,
-  "triggerOneIn": 169.88298227755337,
-  "freeSpinsPerTrigger": 5.903241750866822,
-  "stdDev": 12.900325506796717,
-  "volatilityIndex": 21.2210354586806,
+  "rtp": 0.9646616036199037,
+  "rtpCi": 0.001350032881298039,
+  "rtpBase": 0.706878078934781,
+  "rtpFeature": 0.2577835246819584,
+  "hitFrequency": 0.2255312686534438,
+  "triggerOneIn": 169.7963884846892,
+  "freeSpinsPerTrigger": 11.56653290684034,
+  "stdDev": 11.210273037485177,
+  "volatilityIndex": 18.440899146663117,
   "volatilityLabel": "alta",
   "maxWinX": 5000,
   "maxObservedX": 5000,
   "buy": [
     {
       "variant": "simple",
-      "label": "El golpe al banco",
-      "priceX": 46.2,
-      "ev": 44.435829625,
-      "evCi": 0.21396358150143605,
-      "rtp": 0.9618144940476189,
+      "label": "Guerra de familias",
+      "priceX": 45.4,
+      "ev": 43.80037802498994,
+      "evCi": 0.18226157048178085,
+      "rtp": 0.96476603579273,
       "buys": 2000000
     }
   ],
   "ante": {
-    "costX": 1.19,
-    "rtp": 0.9630900168067227,
-    "rtpCi": 0.002958643450389706,
-    "triggerOneIn": 86.1334603514762,
+    "costX": 1.218,
+    "rtp": 0.9693467549280189,
+    "rtpCi": 0.0024430522653481625,
+    "triggerOneIn": 86.26222335704969,
     "rounds": 100000000
   },
   "checks": [
@@ -44,7 +44,7 @@ export const QA: QaSummary | null = {
       "id": "rtp",
       "level": "error",
       "ok": true,
-      "msg": "RTP 96,59 % ± 0,14 contra el objetivo 96,50 % (tolerancia ±0,20)"
+      "msg": "RTP 96,47 % ± 0,14 contra el objetivo 96,50 % (tolerancia ±0,20)"
     },
     {
       "id": "rtp-precision",
@@ -56,13 +56,13 @@ export const QA: QaSummary | null = {
       "id": "buy-simple",
       "level": "error",
       "ok": true,
-      "msg": "compra \"El golpe al banco\" a 46,2×: EV 44,44× ± 0,21 → RTP 96,18 % (tolerancia ±0,50)"
+      "msg": "compra \"Guerra de familias\" a 45,4×: EV 43,8× ± 0,18 → RTP 96,48 % (tolerancia ±0,50)"
     },
     {
       "id": "ante",
       "level": "error",
       "ok": true,
-      "msg": "ante a 1,19×: RTP 96,31 % ± 0,30, -0,28 puntos contra el juego normal (admitido de -0,50 a +1,00)"
+      "msg": "ante a 1,22×: RTP 96,93 % ± 0,24, +0,47 puntos contra el juego normal (admitido de -0,50 a +1,00)"
     },
     {
       "id": "tope",

@@ -2,5 +2,5 @@
 import type {ClientSkin} from '../games.ts';
 import {SKIN_ART as fallback} from './vendimia.ts';
 import {registerStoryScene} from '../scenes/noir-survival.ts';
-registerStoryScene('zonamuerta',new URL('../../../../packages/games/zonamuerta/art/actors.png',import.meta.url).href);
+registerStoryScene('zonamuerta',new URL('../../../../packages/games/zonamuerta/art/actors.png',import.meta.url).href,new URL('../../../../packages/games/zonamuerta/art/chase.png',import.meta.url).href);
 export const SKIN_ART:ClientSkin={textures:fallback.textures,backdrop:fallback.backdrop};

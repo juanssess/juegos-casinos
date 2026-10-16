@@ -1,52 +1,27 @@
-/**
- * La Familia — pruebas de consistencia del motor (generadas por new-game).
- *
- * Valen para cualquier juego: la ruta con detalle (`play`) y la rápida
- * (`playFast`) tienen que dar exactamente lo mismo con la misma semilla, y la
- * compra del bonus tiene que disparar siempre. Las reglas propias del juego
- * se agregan abajo cuando la mecánica cambie respecto del molde (feria).
- */
-
-import { test } from 'node:test';
+import {test} from 'node:test';
 import assert from 'node:assert/strict';
-
-import { Sfc32Rng, type FastRound } from '../src/index.ts';
-import { MANIFEST } from '../../games/lafamilia/src/manifest.ts';
-
-const bet = MANIFEST.game.paylines.length || MANIFEST.game.betDivisor || 20;
-
-test('play y playFast dan el mismo total con la misma semilla', () => {
-  const eng = MANIFEST.engine();
-  const a = new Sfc32Rng(1873);
-  const b = new Sfc32Rng(1873);
-  const out: FastRound = { baseWin: 0, featureWin: 0, totalWin: 0, triggered: false, freeSpinsPlayed: 0, tier: 0 };
-  for (let i = 0; i < 3000; i++) {
-    const lento = eng.play(a, bet);
-    eng.playFast(b, bet, out);
-    assert.equal(lento.totalWin, out.totalWin, `ronda ${i}: la ruta con detalle y la rápida se separaron`);
-  }
+import {Sfc32Rng,SYM,type FastRound} from '../src/index.ts';
+import {MANIFEST as m} from '../../games/lafamilia/src/manifest.ts';
+import {RIVAL_HP,type WarRecord} from '../../games/lafamilia/src/engine.ts';
+import {roundToSteps} from '../../../apps/client/src/rgs/local.ts';
+const bet=20;
+test('war: detailed/fast totals, spin counts and RNG agree for base and ante',()=>{
+ for(const ante of [false,true]){const e=m.engine(),a=new Sfc32Rng(1873),b=new Sfc32Rng(1873);const out:FastRound={baseWin:0,featureWin:0,totalWin:0,triggered:false,freeSpinsPlayed:0,tier:0};for(let i=0;i<30000;i++){const r=e.play(a,bet,ante);e.playFast(b,bet,out,ante);assert.equal(r.totalWin,out.totalWin);assert.equal(r.free.length,out.freeSpinsPlayed);assert.equal(a.nextInt(1e6),b.nextInt(1e6));}}
 });
-
-test('la compra del bonus siempre dispara', () => {
-  const eng = MANIFEST.engine();
-  const rng = new Sfc32Rng(7);
-  for (let i = 0; i < 200; i++) assert.ok(eng.playBonus(rng, bet).triggered, `compra ${i} sin feature`);
+test('war: ammunition damages rivals in order, promotes symbols, awards extra spins and unlocks the vault',()=>{
+ const e=m.engine(),rng=new Sfc32Rng(191930);let vaults=0;
+ for(let n=0;n<350;n++){const r=e.playBonus(rng,bet);assert.ok(r.triggered);const hp=[RIVAL_HP,RIVAL_HP,RIVAL_HP,RIVAL_HP];let remaining=8;
+ for(const rec of r.free as WarRecord[]){const d=rec.story;remaining--;assert.deepEqual(d.before,hp);assert.equal(d.cashHit,hp.every(v=>!v));const defeated:number[]=[];
+ for(let i=0;i<d.bullets;i++){const target=hp.findIndex(v=>v>0);if(target<0)break;hp[target]!--;if(hp[target]===0)defeated.push(target);}
+ assert.deepEqual(d.defeated,defeated);assert.deepEqual(d.hp,hp);const extra=defeated.reduce((s,i)=>s+(i===3?4:2),0);assert.equal(rec.awarded,extra);remaining+=extra;assert.equal(d.left,remaining);
+ const rivals:number[]=[SYM.H2,SYM.H3,SYM.H4,SYM.L1];for(let c=0;c<rec.grid.length;c++){const rival=rivals.indexOf(d.rawGrid[c]!);assert.equal(rec.grid[c],rival>=0&&hp[rival]===0?SYM.H1:d.rawGrid[c]);}
+ if(d.cashHit){vaults++;assert.equal(d.safes.length,3);let collect=0;for(let c=0;c<rec.grid.length;c++)if(rec.grid[c]===SYM.H1)collect+=d.safes[c%3]!*bet;assert.equal(d.collect,collect);}else assert.equal(d.collect,0);
+ }
+ assert.ok(r.totalWin<=5000*bet);assert.equal(r.baseWin+r.featureWin,r.totalWin);assert.equal(roundToSteps(m.game,r).reduce((s,x)=>s+x.win,0),r.totalWin);
+ }
+ assert.ok(vaults>20);
 });
-
-test('las bolsas quedan fijas y cada nueva bolsa renueva los intentos', () => {
-  const engine = MANIFEST.engine(), rng = new Sfc32Rng(191930);
-  for (let n = 0; n < 80; n++) {
-    const round = engine.playBonus(rng, bet);
-    let prior = round.base.mults!;
-    assert.ok(round.totalWin <= 5000 * bet);
-    for (const step of round.free) {
-      const values = step.mults!;
-      for (let i = 0; i < prior.length; i++) if (prior[i]! > 0) assert.equal(values[i], prior[i]);
-      for (const i of step.hold!.fresh) { assert.equal(prior[i], 0); assert.ok(values[i]! > 0); }
-      if (step.hold!.fresh.length && values.some(v => v === 0)) assert.equal(step.hold!.left, 3);
-      prior = values;
-    }
-    if (round.free.length) assert.equal(round.free.at(-1)!.hold!.collect, round.featureWin);
-    assert.equal(round.baseWin + round.featureWin, round.totalWin);
-  }
+test('war: the rare vault prize respects the round cap and replay sums exactly',()=>{
+ const seeded=new Sfc32Rng(7),rng={nextInt:(max:number)=>max===1000?999:max===1e6?0:seeded.nextInt(max)},r=m.engine().playBonus(rng,bet);
+ assert.equal(r.totalWin,5000*bet);assert.equal(roundToSteps(m.game,r).reduce((s,x)=>s+x.win,0),r.totalWin);assert.ok((r.free as WarRecord[]).some(s=>s.story.cashHit));
 });
