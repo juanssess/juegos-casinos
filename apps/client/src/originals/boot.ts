@@ -102,6 +102,9 @@ export async function bootOriginal(m: OriginalManifest): Promise<void> {
   else (await import('./plinko.ts')).startPlinko(ctx, def);
   layout();
 
+  // The controls can wrap after a window resize; resize again when the stage itself changes.
+  new ResizeObserver(() => app.resize()).observe(shell.stage);
+
   // QA: con la pestaña oculta el navegador no da cuadros; esto los avanza a mano.
   if (import.meta.env.DEV || new URLSearchParams(location.search).has('debug')) {
     Object.assign(window as unknown as Record<string, unknown>, {

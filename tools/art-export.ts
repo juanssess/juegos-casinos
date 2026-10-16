@@ -19,6 +19,7 @@ import { resolve } from 'node:path';
 
 import { SYM, type ArtFile } from '@casino/math';
 import { GAMES_DIR, gameIds, loadGame } from './games.ts';
+import { publishBlocker } from './qa-lib.ts';
 
 const out = resolve(process.argv[2] ?? die('Falta la carpeta destino.'));
 mkdirSync(out, { recursive: true });
@@ -36,6 +37,9 @@ for (const id of gameIds()) {
   const cover = art.symbols.order.indexOf(SYM.SCATTER);
   index[id] = {
     title: m.theme.TITLE,
+    verified: publishBlocker(m) === null,
+    rtpValue: m.qa?.passed ? m.qa.rtp : null,
+    volatility: m.qa?.passed ? m.qa.volatilityLabel : null,
     symbols: `${id}-symbols.png`,
     scene: `${id}-scene.jpg`,
     cols: art.symbols.cols,

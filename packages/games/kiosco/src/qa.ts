@@ -5,14 +5,14 @@
 import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
-  "date": "2026-10-15",
-  "sourceHash": "e5219da479acc37f",
+  "date": "2026-10-16",
+  "sourceHash": "96fa6b03d270e273",
   "rounds": 800000000,
   "targetRtp": 0.965,
   "rtp": 0.9652048536770739,
   "rtpCi": 0.000921836370146931,
   "rtpBase": 0.570872247001224,
-  "rtpFeature": 0.3943326066249999,
+  "rtpFeature": 0.394332606625,
   "hitFrequency": 0.337964255,
   "triggerOneIn": 372.47918888931827,
   "freeSpinsPerTrigger": 10.794617768840347,

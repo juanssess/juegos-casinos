@@ -7,28 +7,28 @@ tabla por cada camino que forme. El tema son las Cataratas del Iguazú; las
 cascadas del juego son el agua.
 
 <!-- qa:inicio -->
-## QA automático — NO APROBADO
+## QA automático — APROBADO
 
 Generado por `npm run qa -- --game cataratas` el 2026-10-16. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `5c6f493d7ece06f4`.
+Huella de la matemática: `6235398aca02d9ee`.
 
 | | |
 |---|---|
-| RTP | **96,80 % ± 0,10** (800M de rondas; objetivo 96,50 %) |
-| Reparto | base 59,06 % · giros gratis 37,73 % |
+| RTP | **96,47 % ± 0,13** (433,76M de rondas; objetivo 96,50 %) |
+| Reparto | base 59,03 % · giros gratis 37,45 % |
 | Frecuencia de premio | 32,6 % |
-| Bonus | 1 de cada 326 rondas · 13,65 giros por disparo |
-| Volatilidad | muy alta (índice 23,4; desvío 14,20) |
+| Bonus | 1 de cada 326 rondas · 13,64 giros por disparo |
+| Volatilidad | muy alta (índice 23,5; desvío 14,27) |
 | Tope | 10.000× · mayor premio medido 10000× |
-| Compra "La Garganta del Diablo" | 130,3× · EV 125,14× ± 0,29 (2M) → RTP 96,04 % |
-| Apuesta ante | 1,25× · RTP 96,69 % ± 0,14 · bonus 1 de cada 196 |
+| Compra "La Garganta del Diablo" | 129,2× · EV 124,84× ± 0,29 (2M) → RTP 96,62 % |
+| Apuesta ante | 1,25× · RTP 96,32 % ± 0,14 · bonus 1 de cada 196 |
 
 Controles:
 
-- ✗ RTP 96,80 % ± 0,10 contra el objetivo 96,50 % (tolerancia ±0,20)
-- ✓ precisión de la medición ±0,10 puntos (máximo ±0,15; si no alcanza, más rondas)
-- ✓ compra "La Garganta del Diablo" a 130,3×: EV 125,14× ± 0,29 → RTP 96,04 % (tolerancia ±0,50)
-- ✓ ante a 1,25×: RTP 96,69 % ± 0,14, -0,10 puntos contra el juego normal (admitido de -0,50 a +1,00)
+- ✓ RTP 96,47 % ± 0,13 contra el objetivo 96,50 % (tolerancia ±0,20)
+- ✓ precisión de la medición ±0,13 puntos (máximo ±0,15; si no alcanza, más rondas)
+- ✓ compra "La Garganta del Diablo" a 129,2×: EV 124,84× ± 0,29 → RTP 96,62 % (tolerancia ±0,50)
+- ✓ ante a 1,25×: RTP 96,32 % ± 0,14, -0,15 puntos contra el juego normal (admitido de -0,50 a +1,00)
 - ✓ tope 10.000×: el mayor premio medido fue 10000× (tiene que llegar al 50 % del tope para no ser decorativo)
 - ✓ frecuencia de premio 32,6 % (el mercado: 25 % a 35 %)
 - ✓ bonus 1 de cada 326 rondas (el mercado: de 150 a 400)
@@ -49,7 +49,7 @@ Controles:
 | Giros gratis | 4 o más medallones: 12 giros; 3 o más adentro suman 5 |
 | Multiplicador | Base sin multiplicador; en la función +1 por cada cascada que gana, sin volver atrás |
 | Apuesta mínima | 20 créditos (la apuesta se divide en 20 fichas) |
-| Compra del bonus | 130,3× (medido) |
+| Compra del bonus | 129,2× (medido) |
 | Apuesta ante | 1,25×: cuatro medallones en cada columna |
 | Premio máximo | 10.000× la apuesta (tope duro) |
 
@@ -95,12 +95,12 @@ En fichas (apuesta ÷ 20) **por camino**. La vigente es la de
 
 | Símbolo | Skin | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|
-| H1 | Yaguareté | 5 | 15 | 40 | 125 |
-| H2 | Tucán | 3 | 9 | 30 | 85 |
-| H3 | Mariposa Azul | 3 | 6 | 20 | 60 |
-| H4 | Orquídea | 3 | 6 | 15 | 50 |
+| H1 | Yaguareté | 5 | 10 | 35 | 125 |
+| H2 | Tucán | 3 | 9 | 25 | 85 |
+| H3 | Mariposa Azul | 3 | 6 | 15 | 65 |
+| H4 | Orquídea | 3 | 5 | 15 | 50 |
 | L1 | Amatista | 2 | 3 | 8 | 35 |
-| L2 | Ágata | 1 | 2 | 6 | 20 |
+| L2 | Ágata | 1 | 2 | 6 | 25 |
 | L3 | Cuarzo | 1 | 2 | 4 | 15 |
 | L4 | Topacio | 1 | 2 | 3 | 15 |
 | L5 | Jaspe | 1 | 2 | 3 | 10 |
@@ -110,6 +110,6 @@ Medallones, sobre la apuesta total: 4 → 2×, 5 → 5×, 6 o más → 20×.
 ## Reproducir
 
 ```
-npm run tune -- --game cataratas --rounds 2e7
+npm run tune -- --game cataratas --rounds 2e7 --target 0.9672
 npm run qa -- --game cataratas
 ```

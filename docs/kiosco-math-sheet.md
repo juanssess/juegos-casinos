@@ -9,8 +9,8 @@ propios. Todo número acá sale de `tools/sim.ts`, `tools/tune.ts` y
 <!-- qa:inicio -->
 ## QA automático — APROBADO
 
-Generado por `npm run qa -- --game kiosco` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `e5219da479acc37f`.
+Generado por `npm run qa -- --game kiosco` el 2026-10-16. No editar a mano: se reescribe en cada corrida.
+Huella de la matemática: `96fa6b03d270e273`.
 
 | | |
 |---|---|

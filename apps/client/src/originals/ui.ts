@@ -72,6 +72,13 @@ export function createShell(m: OriginalManifest, rtpText: string): Shell {
     .o-flash.o-on{opacity:1}
     .o-flash.o-win{color:var(--o-win);border-color:var(--o-win)}
     .o-flash.o-lose{color:#ff8a7a}
+    @media (max-height:500px) and (min-width:600px){
+      #stage{inset:0 260px 0 0;width:auto;height:auto}
+      .o-bar{left:auto;top:0;width:260px;min-height:0;overflow-y:auto;justify-content:center;border-top:0;border-left:2px solid var(--o-frame)}
+      .o-title{right:260px;font-size:20px;letter-spacing:4px}
+      .o-row{gap:8px}
+      .o-flash{left:calc((100% - 260px)/2);bottom:12px;max-width:calc(100% - 280px);white-space:normal;font-size:16px}
+    }
     @media (max-width:560px){.o-title{font-size:19px;letter-spacing:4px}.o-main{min-width:150px}.o-value{min-width:64px;font-size:16px}}
   `;
   document.head.appendChild(style);

@@ -11,10 +11,10 @@ import { SYM, type SymbolId } from '@casino/math';
 export const TARGET_RTP = 0.965;
 
 /**
- * Precio de la compra, en múltiplos de la apuesta. MEDIDO con el QA rápido
- * (200.000 compras): EV 125,69× ± 0,92 → a 130,3× el RTP de la compra es 96,5 %.
+ * Precio de la compra, en múltiplos de la apuesta, recalibrado con la tabla.
+ * El QA completo mide de nuevo su valor esperado y su retorno antes de publicar.
  */
-export const BONUS_BUY_X = 130.3;
+export const BONUS_BUY_X = 129.2;
 
 /**
  * APUESTA ANTE: cuatro medallones en cada columna en vez de cuatro y tres.

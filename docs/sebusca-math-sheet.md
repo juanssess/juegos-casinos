@@ -6,8 +6,8 @@ Documento de referencia del juego #2. Todo número acá sale de `tools/sim.ts`,
 <!-- qa:inicio -->
 ## QA automático — APROBADO
 
-Generado por `npm run qa -- --game sebusca` el 2026-10-15. No editar a mano: se reescribe en cada corrida.
-Huella de la matemática: `6541feb477a41755`.
+Generado por `npm run qa -- --game sebusca` el 2026-10-16. No editar a mano: se reescribe en cada corrida.
+Huella de la matemática: `7beea30e144f9dc2`.
 
 | | |
 |---|---|

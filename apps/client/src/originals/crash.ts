@@ -187,12 +187,21 @@ export function startCrash(ctx: OriginalCtx, def: CrashDef): void {
     }
   }
 
+  let starting = false;
   async function start(): Promise<void> {
-    if (running) return;
+    if (running || starting) return;
+    starting = true;
+    shell.main.disabled = true;
     const bet = shell.bet();
     audio.click();
-    if (!(await wallet.debit(bet))) {
-      shell.flash('Saldo insuficiente', 'lose');
+    let accepted = false;
+    let debitFailed = false;
+    try { accepted = await wallet.debit(bet); }
+    catch (_) { debitFailed = true; }
+    starting = false;
+    if (!accepted) {
+      setButton();
+      shell.flash(debitFailed ? 'No se pudo confirmar la apuesta. Probá de nuevo.' : 'Saldo insuficiente', 'lose');
       shell.setBalance(wallet.balance);
       return;
     }

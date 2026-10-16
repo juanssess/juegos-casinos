@@ -44,17 +44,19 @@ const TIER_LABELS: readonly string[] = ['3', '4', '5', '6'];
  * Tabla de pagos: `paytable[símbolo][columnas - 3]`, en múltiplos de la
  * FICHA (la apuesta dividida en 20), POR CAMINO.
  *
- * Resuelta por `node tools/tune.ts --game cataratas`. No editar a mano.
+ * Resuelta con `node tools/tune.ts --game cataratas --rounds 2e7 --target 0.9672`.
+ * El objetivo del solver compensa el recorte del tope; el QA mide el RTP
+ * efectivo contra el objetivo de 96,5 %. No editar la tabla a mano.
  */
 const PAYTABLE: readonly (readonly number[])[] = (() => {
   const t: number[][] = Array.from({ length: 11 }, () => [0, 0, 0, 0]);
   //            3    4    5    6
-  t[SYM.H1] = [5, 15, 40, 125];
-  t[SYM.H2] = [3, 9, 30, 85];
-  t[SYM.H3] = [3, 6, 20, 60];
-  t[SYM.H4] = [3, 6, 15, 50];
+  t[SYM.H1] = [5, 10, 35, 125];
+  t[SYM.H2] = [3, 9, 25, 85];
+  t[SYM.H3] = [3, 6, 15, 65];
+  t[SYM.H4] = [3, 5, 15, 50];
   t[SYM.L1] = [2, 3, 8, 35];
-  t[SYM.L2] = [1, 2, 6, 20];
+  t[SYM.L2] = [1, 2, 6, 25];
   t[SYM.L3] = [1, 2, 4, 15];
   t[SYM.L4] = [1, 2, 3, 15];
   t[SYM.L5] = [1, 2, 3, 10];

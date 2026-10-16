@@ -5,13 +5,13 @@
 import type { QaSummary } from '@casino/math';
 
 export const QA: QaSummary | null = {
-  "date": "2026-10-15",
-  "sourceHash": "6541feb477a41755",
+  "date": "2026-10-16",
+  "sourceHash": "7beea30e144f9dc2",
   "rounds": 2703285120,
   "targetRtp": 0.965,
-  "rtp": 0.9659237039876016,
+  "rtp": 0.9659237039876013,
   "rtpCi": 0.001357473344556722,
-  "rtpBase": 0.4128503424413811,
+  "rtpBase": 0.41285034244138086,
   "rtpFeature": 0.5530733615944071,
   "hitFrequency": 0.3275800249290759,
   "triggerOneIn": 258.08562670051947,
@@ -26,9 +26,9 @@ export const QA: QaSummary | null = {
       "variant": "simple",
       "label": "La Cacería",
       "priceX": 151,
-      "ev": 145.89806513333764,
+      "ev": 145.89806513333758,
       "evCi": 0.775290280707172,
-      "rtp": 0.9662123518764082,
+      "rtp": 0.9662123518764079,
       "buys": 2000000
     },
     {
@@ -52,8 +52,8 @@ export const QA: QaSummary | null = {
   ],
   "ante": {
     "costX": 1.8,
-    "rtp": 0.9712997685016805,
-    "rtpCi": 0.0030398793502349514,
+    "rtp": 0.9712997685016806,
+    "rtpCi": 0.003039879350234951,
     "triggerOneIn": 107.74059619875015,
     "rounds": 400000000
   },
