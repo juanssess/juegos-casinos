@@ -1,0 +1,17 @@
+{
+  "name": "@casino/game-dunas",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./engine": "./src/engine.ts",
+    "./measure": "./src/measure.ts",
+    "./tuning": "./src/tuning.ts",
+    "./theme": "./src/theme.ts",
+    "./manifest": "./src/manifest.ts"
+  },
+  "dependencies": {
+    "@casino/math": "*"
+  }
+}

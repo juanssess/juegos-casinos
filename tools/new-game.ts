@@ -158,9 +158,11 @@ else writeFileSync(testFile, `/**
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Sfc32Rng, type FastRound } from '../src/index.ts';
-import { MANIFEST } from '../../games/${id}/src/manifest.ts';
+import { Sfc32Rng, type FastRound, type SlotManifest } from '../src/index.ts';
+import { MANIFEST as M } from '../../games/${id}/src/manifest.ts';
 
+/* El manifest se declara como GameManifest, que incluye a los originales. */
+const MANIFEST = M as SlotManifest;
 const bet = MANIFEST.game.paylines.length || MANIFEST.game.betDivisor || 20;
 
 test('play y playFast dan el mismo total con la misma semilla', () => {
