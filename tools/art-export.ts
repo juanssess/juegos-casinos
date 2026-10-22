@@ -37,6 +37,13 @@ for (const id of gameIds()) {
   copyFileSync(resolve(dir, art.symbols.file), resolve(out, `${id}-symbols.png`));
   copyFileSync(resolve(dir, art.scene), resolve(out, `${id}-scene.jpg`));
   const cover = art.symbols.order.indexOf(SYM.SCATTER);
+  /* El trío del banner del lobby: al frente el símbolo más caro, a los costados
+     el scatter y el wild. En un original, la pieza de portada y otras dos. */
+  const at = (sym: number) => art.symbols.order.indexOf(sym);
+  const hero = (m.kind === 'original'
+    ? [at(1), ...art.symbols.order.map((_, i) => i).filter((i) => i !== at(1)).reverse()]
+    : [at(SYM.H1), cover, at(SYM.WILD)]
+  ).filter((i) => i >= 0).slice(0, 3);
   index[id] = {
     title: m.theme.TITLE,
     verified: publishBlocker(m) === null,
@@ -49,6 +56,10 @@ for (const id of gameIds()) {
     cover: cover >= 0 ? cover : 0,
     detail: m.client.featureDetail ?? '',
     tint: m.client.featureTint ?? null,
+    hero,
+    // Colores del juego para el banner: el acento (scatter) y el dorado del mueble.
+    accent: m.theme.PALETTE.scatter,
+    gold: m.theme.PALETTE.frameLight,
   };
 }
 
