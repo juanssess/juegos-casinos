@@ -41,7 +41,7 @@ export function paintedScenery(app: Application, profile: ClientGame): Scenery &
   const story = mountStoryScene(app, profile.id, sprite);
   // Agua que cae sobre la pintura (Las Cataratas); null en los demás juegos.
   const water = mountWaterfalls(app, profile.id, sprite);
-  // Arena, polvo y motas en el aire (Las Dunas, El Gran Premio).
+  // Arena, polvo, nieve o motas en el aire, según la receta del juego (ver ambient.ts).
   const ambient = mountAmbient(app, profile.id, sprite);
   return {
     sprite,

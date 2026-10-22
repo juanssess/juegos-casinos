@@ -8,7 +8,7 @@
  *       de Gamma, o cualquiera a mano.
  *
  *   npm run art -- cut --game feria --sheet hoja.jpg --scene escena.jpg
- *                      [--protect "9:242,312 263,312 127,514 105,514"]
+ *                      [--protect "9:242,312 263,312 127,514 105,514"] [--grid 4x4]
  *       Guarda las fuentes en `art/source/`, recorta la hoja (3×4, en el
  *       orden de `src/art.ts`), arma `art/symbols.png`, `art/scene.jpg` y
  *       `art/art.json`, y deja una vista de control para mirar los bordes.
@@ -98,15 +98,29 @@ function parseProtect(spec: string | undefined): Record<number, [number, number]
   return out;
 }
 
+/**
+ * La grilla de la hoja. Se pide 3×4, pero el generador a veces entrega otra
+ * (4×4, por ejemplo): `--grid 4x4` la recorta como vino, sin regenerar.
+ */
+function gridArg(prev?: { cols: number; rows: number }): { cols: number; rows: number } {
+  const g = arg('grid');
+  if (g) {
+    const [cols, rows] = g.split('x').map(Number);
+    if (cols && rows) return { cols, rows };
+  }
+  return prev ?? { cols: SHEET_COLS, rows: SHEET_ROWS };
+}
+
 async function cut(
   m: GameManifest, sheet: string, scene: string,
   protect: Record<number, [number, number][]>,
   // Qué símbolo hay en cada celda de la hoja. Por defecto, el orden de los
   // pedidos (por número de símbolo); una hoja vieja puede traer otro.
   cells: SymbolId[] = Object.keys(m.art.symbols).map(Number) as SymbolId[],
+  grid: { cols: number; rows: number } = gridArg(),
 ): Promise<void> {
   const dir = resolve(GAMES_DIR, m.id, 'art');
-  const sprites = (await cutSheet(sheet, SHEET_COLS, SHEET_ROWS, protect)).slice(0, cells.length);
+  const sprites = (await cutSheet(sheet, grid.cols, grid.rows, protect)).slice(0, cells.length);
   const missing = cells.filter((_, i) => !sprites[i]);
   if (missing.length) throw new Error(`Celdas vacías en la hoja: ${missing.map((s) => SYMBOL_NAMES[s]).join(', ')}`);
 
@@ -123,7 +137,7 @@ async function cut(
     source: 'gamma',
     provisional: false,
     date: new Date().toISOString().slice(0, 10),
-    cut: { cols: SHEET_COLS, rows: SHEET_ROWS, cells, protect },
+    cut: { cols: grid.cols, rows: grid.rows, cells, protect },
   };
   writeFileSync(resolve(dir, 'art.json'), JSON.stringify(file, null, 2) + '\n');
 
@@ -157,7 +171,8 @@ if (cmd === 'prompts') {
   const find = (base: string) => ['.jpg', '.png', '.jpeg', '.webp'].map((e) => resolve(dir, 'source', base + e)).find(existsSync);
   const sheet = find('symbols-sheet') ?? die(`${m.id} no tiene art/source/symbols-sheet.*`);
   const scene = find('scene') ?? die(`${m.id} no tiene art/source/scene.*`);
-  await cut(m, sheet, scene, arg('protect') ? parseProtect(arg('protect')) : (prev.cut?.protect ?? {}), prev.cut?.cells);
+  await cut(m, sheet, scene, arg('protect') ? parseProtect(arg('protect')) : (prev.cut?.protect ?? {}), prev.cut?.cells,
+    gridArg(prev.cut ? { cols: prev.cut.cols, rows: prev.cut.rows } : undefined));
 } else if (cmd === 'shared') {
   const sheet = arg('sheet') ?? die('Falta --sheet (la hoja 2×2 del arte compartido).');
   const dir = resolve(ROOT, 'apps/client/src/render/shared');

@@ -1,5 +1,5 @@
 /**
- * Ambiente que se mueve sobre las escenas pintadas: polvo, arena, motas.
+ * Ambiente que se mueve sobre las escenas pintadas: polvo, arena, nieve, motas.
  *
  * Igual que el agua de Las Cataratas (waterfalls.ts): partículas generadas
  * acá, en coordenadas de la PINTURA, sobre una capa que copia la escala y la
@@ -56,6 +56,28 @@ const RECIPES: Record<string, { size: number; emitters: Emitter[] }> = {
       // Velos de arena muy suaves que cruzan la escena a ras del suelo.
       { kind: 'puff', from: [[-200, 1100], [-200, 1400]], spread: 160, rate: 0.9, life: [9, 13], vel: [190, -6], jitter: [40, 6],
         size: [360, 520], grow: 1.5, color: 0xd98a5a, alpha: 0.13, bonus: 1.7 },
+    ],
+  },
+  glaciar: {
+    size: 1536,
+    emitters: [
+      // Nieve fina que cae sobre el glaciar y el lago.
+      { kind: 'grain', from: [[-100, -30], [1636, -30]], spread: 20, rate: 34, life: [9, 15], vel: [18, 40], jitter: [22, 14],
+        size: [3, 7], grow: 1, color: 0xf2fbff, alpha: 0.75, bonus: 2.2 },
+      // Bruma fría que corre sobre el agua, entre los témpanos.
+      { kind: 'puff', from: [[-220, 1150], [-220, 1420]], spread: 140, rate: 0.7, life: [11, 15], vel: [150, -3], jitter: [30, 4],
+        size: [380, 560], grow: 1.4, color: 0xd6eeff, alpha: 0.12, bonus: 1.6 },
+    ],
+  },
+  milonga: {
+    size: 1536,
+    emitters: [
+      // Motas de polvo que brillan en la luz de las arañas y suben despacio.
+      { kind: 'puff', from: [[100, 1500], [1436, 1500]], spread: 60, rate: 6, life: [8, 12], vel: [6, -95], jitter: [14, 25],
+        size: [7, 13], grow: 1, color: 0xffd9a0, alpha: 0.55, bonus: 1.8 },
+      // El humo tibio del salón, en velos que cruzan a media altura.
+      { kind: 'puff', from: [[-220, 700], [-220, 1000]], spread: 160, rate: 0.6, life: [12, 16], vel: [110, -6], jitter: [25, 5],
+        size: [420, 600], grow: 1.3, color: 0xffc89a, alpha: 0.09, bonus: 1.5 },
     ],
   },
   granpremio: {
