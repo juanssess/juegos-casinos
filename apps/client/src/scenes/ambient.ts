@@ -58,6 +58,28 @@ const RECIPES: Record<string, { size: number; emitters: Emitter[] }> = {
         size: [360, 520], grow: 1.5, color: 0xd98a5a, alpha: 0.13, bonus: 1.7 },
     ],
   },
+  asado: {
+    size: 1536,
+    emitters: [
+      // Chispas que saltan de la parrilla de la izquierda y suben con el calor.
+      { kind: 'puff', from: [[120, 1000], [420, 980]], spread: 60, rate: 12, life: [1.6, 3], vel: [30, -170], jitter: [40, 50],
+        size: [5, 9], grow: 0.4, color: 0xffa040, alpha: 0.85, bonus: 1.8 },
+      // El humo del asado, que sube y se abre hacia la derecha.
+      { kind: 'puff', from: [[200, 900], [380, 880]], spread: 70, rate: 2.2, life: [6, 9], vel: [45, -70], jitter: [20, 20],
+        size: [140, 220], grow: 2.6, color: 0xc8b8a8, alpha: 0.16, bonus: 1.6 },
+    ],
+  },
+  hinchada: {
+    size: 1536,
+    emitters: [
+      // Papelitos que caen sobre la tribuna.
+      { kind: 'grain', from: [[-60, -40], [1600, -40]], spread: 30, rate: 26, life: [7, 11], vel: [20, 55], jitter: [30, 20],
+        size: [4, 8], grow: 1, color: 0xf2f6ff, alpha: 0.7, bonus: 2.4 },
+      // Humo rojo de bengala que sube por los costados.
+      { kind: 'puff', from: [[80, 1300], [1456, 1300]], spread: 90, rate: 1.6, life: [7, 10], vel: [0, -90], jitter: [30, 20],
+        size: [200, 300], grow: 2.2, color: 0xff5a4a, alpha: 0.13, bonus: 2 },
+    ],
+  },
   glaciar: {
     size: 1536,
     emitters: [
