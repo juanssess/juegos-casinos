@@ -83,6 +83,12 @@ export interface ClientSettings {
   featureTint?: number;
   /** Una frase sobre la función, para la pantalla de entrada del bonus. */
   featureDetail?: string;
+  /**
+   * Juegos con Escalinata: cómo se llama la escalada en este juego y su nivel
+   * más alto ("El Ascenso", "la Cumbre"). Default: los de Maverick.
+   */
+  climbName?: string;
+  climbTop?: string;
   /** Cómo se llama la escalera de las cascadas en este juego ("MARCHA"): va delante del ×N. */
   ladderLabel?: string;
 }

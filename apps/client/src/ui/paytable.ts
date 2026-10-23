@@ -27,6 +27,9 @@ export function createPaytable(opts: {
   hasClimb: boolean;
   /** Hold & Win: reglas y jackpots. */
   hold?: { trigger: number; respins: number; jackpots: Jackpots } | undefined;
+  /** Escalinata con nombre propio, y cómo se llaman sus scatters en plural. */
+  climbName?: string | undefined;
+  scatterPlural?: string | undefined;
 }): Container {
   const { cfg, labels: SKIN, textures, boardW, boardH } = opts;
   const GAME = opts.game;
@@ -213,10 +216,10 @@ export function createPaytable(opts: {
       4, featY + 42, 12, PALETTE.mult ?? PALETTE.win);
     t('Al final se cobra la suma de todas las monedas. El valor está en veces tu apuesta.', 4, featY + 62, 11, PALETTE.textDim);
   } else if (opts.hasClimb) {
-    t('LA ESCALINATA', 4, featY, 15, PALETTE.scatter);
+    t((opts.climbName ?? 'La Escalinata').toUpperCase(), 4, featY, 15, PALETTE.scatter);
     t(cfg.climbTiers.map((tt, k) => `N${k + 1}: ${tt.spins}×${tt.multiplier}`).join('   '), 4, featY + 22, 12.5, PALETTE.text);
     const oddsTxt = cfg.climbAscendPerMil.map((o) => `${o / 10}%`).join(' → ');
-    t(`Probabilidad de subir cada escalón: ${oddsTxt} · retrigger: 3+ templos = +5 giros`,
+    t(`Probabilidad de subir cada escalón: ${oddsTxt} · retrigger: 3+ ${opts.scatterPlural ?? 'templos'} = +5 giros`,
       4, featY + 42, 11, PALETTE.textDim);
   } else {
     t('WILDS PEGAJOSOS', 4, featY, 15, PALETTE.scatter);

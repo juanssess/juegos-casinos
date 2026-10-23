@@ -89,6 +89,9 @@ export interface ClientGame {
   featureDetail?: string;
   /** Nombre de la escalera de las cascadas ("MARCHA ×4"). */
   ladderLabel?: string;
+  /** Nombre de la Escalinata en este juego y de su cima. */
+  climbName?: string;
+  climbTop?: string;
 }
 
 const MANIFESTS = import.meta.glob<{ MANIFEST: GameManifest }>(
@@ -148,6 +151,8 @@ function toClientGame(m: SlotManifest, art: ClientSkin): ClientGame {
     ...(c.featureTint !== undefined ? { featureTint: c.featureTint } : {}),
     ...(c.featureDetail ? { featureDetail: c.featureDetail } : {}),
     ...('ladderLabel' in c && c.ladderLabel ? { ladderLabel: c.ladderLabel } : {}),
+    ...('climbName' in c && c.climbName ? { climbName: c.climbName } : {}),
+    ...('climbTop' in c && c.climbTop ? { climbTop: c.climbTop } : {}),
   };
 }
 

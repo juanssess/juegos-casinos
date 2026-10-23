@@ -91,6 +91,20 @@ const RECIPES: Record<string, { size: number; emitters: Emitter[] }> = {
         size: [380, 560], grow: 1.4, color: 0xd6eeff, alpha: 0.12, bonus: 1.6 },
     ],
   },
+  aconcagua: {
+    size: 1536,
+    emitters: [
+      // El viento blanco: nieve que el viento arranca de las cumbres y cruza de costado.
+      { kind: 'grain', from: [[-60, 200], [-60, 600], [-60, 1000]], spread: 120, rate: 30, life: [6, 10], vel: [170, 14], jitter: [40, 18],
+        size: [2, 6], grow: 1, color: 0xfff4f0, alpha: 0.7, bonus: 2 },
+      // Penacho de nieve que sale de la cumbre, iluminado por el sol.
+      { kind: 'puff', from: [[740, 380], [880, 390]], spread: 40, rate: 3, life: [4, 6], vel: [90, -10], jitter: [20, 8],
+        size: [90, 160], grow: 1.8, color: 0xffe2d0, alpha: 0.16, bonus: 1.5 },
+      // Nubes bajas que pasan por el valle del campamento.
+      { kind: 'puff', from: [[-240, 1180], [-240, 1400]], spread: 140, rate: 0.6, life: [12, 16], vel: [130, -3], jitter: [25, 4],
+        size: [400, 580], grow: 1.4, color: 0xe6dcff, alpha: 0.11, bonus: 1.5 },
+    ],
+  },
   milonga: {
     size: 1536,
     emitters: [

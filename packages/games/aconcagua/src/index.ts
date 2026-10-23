@@ -1,0 +1,156 @@
+/**
+ * aconcagua — modelo matemático "El Aconcagua": slot 5×3 de 20 líneas con
+ * wild, scatter (la bandera de la cumbre) y El Ascenso: al disparar, la
+ * escalada de campamento en campamento decide el paquete de giros gratis.
+ *
+ * Es el molde de Maverick (`classic20`) con volatilidad BAJA: tabla más
+ * plana, menos wilds en la función y multiplicadores de ×2 a ×4. Las
+ * decisiones medidas están en tuning.ts y en docs/aconcagua-math-sheet.md.
+ */
+
+import {
+  SYM,
+  buildStrips,
+  Sfc32Rng,
+  type SlotGameDef,
+  type SymbolCounts,
+} from '@casino/math';
+import { ANTE_SCATTERS, ANTE_COST_X, BONUS_VARIANTS } from './tuning.ts';
+import { PAYLINES } from './paylines.ts';
+
+const REELS = 5;
+const ROWS = 3;
+
+/**
+ * Tabla de pagos, en múltiplos de la APUESTA POR LÍNEA.
+ * Índice = cantidad de símbolos consecutivos desde el rodillo 1.
+ *
+ * El WILD no tiene fila propia: una línea llena de wilds paga como H1,
+ * porque el evaluador prueba todos los símbolos y se queda con el mejor.
+ */
+const PAYTABLE: readonly (readonly number[])[] = (() => {
+  const t: number[][] = Array.from({ length: 11 }, () => [0, 0, 0, 0, 0, 0]);
+  // Resuelto por tools/tune.ts contra los objetivos de tuning.ts.
+  // No editar a mano: si tocás un número acá, el RTP deja de ser el declarado.
+  //                    3    4     5
+  t[SYM.H1] = [0, 0, 0, 150, 425, 1150];
+  t[SYM.H2] = [0, 0, 0, 70, 200, 500];
+  t[SYM.H3] = [0, 0, 0, 35, 100, 250];
+  t[SYM.H4] = [0, 0, 0, 25, 60, 125];
+  t[SYM.L1] = [0, 0, 0, 20, 45, 90];
+  t[SYM.L2] = [0, 0, 0, 15, 35, 80];
+  t[SYM.L3] = [0, 0, 0, 15, 30, 65];
+  t[SYM.L4] = [0, 0, 0, 15, 25, 50];
+  t[SYM.L5] = [0, 0, 0, 10, 20, 40];
+  return t;
+})();
+
+/** Pagos del scatter, en múltiplos de la APUESTA TOTAL. */
+const SCATTER_PAYTABLE: readonly number[] = [0, 0, 0, 2, 10, 50];
+
+/**
+ * Composición de las tiras del juego base.
+ *
+ * Dos decisiones clásicas visibles acá:
+ *  - No hay WILD en los rodillos 1 y 5. Baja mucho el RTP y hace que el wild
+ *    se sienta especial cuando aparece.
+ *  - El rodillo 3 tiene más wilds que el 2 y el 4: es el que el ojo mira.
+ */
+const BASE_COUNTS: readonly SymbolCounts[] = [
+  // rodillo 1 — sin wild
+  { [SYM.H1]: 4, [SYM.H2]: 5, [SYM.H3]: 6, [SYM.H4]: 7, [SYM.L1]: 10, [SYM.L2]: 10, [SYM.L3]: 10, [SYM.L4]: 10, [SYM.L5]: 10, [SYM.SCATTER]: 2 },
+  // rodillo 2
+  { [SYM.WILD]: 4, [SYM.H1]: 4, [SYM.H2]: 5, [SYM.H3]: 6, [SYM.H4]: 7, [SYM.L1]: 9, [SYM.L2]: 9, [SYM.L3]: 9, [SYM.L4]: 9, [SYM.L5]: 9, [SYM.SCATTER]: 2 },
+  // rodillo 3 — el más generoso en wilds
+  { [SYM.WILD]: 5, [SYM.H1]: 4, [SYM.H2]: 5, [SYM.H3]: 6, [SYM.H4]: 7, [SYM.L1]: 9, [SYM.L2]: 9, [SYM.L3]: 9, [SYM.L4]: 9, [SYM.L5]: 9, [SYM.SCATTER]: 2 },
+  // rodillo 4
+  { [SYM.WILD]: 4, [SYM.H1]: 4, [SYM.H2]: 5, [SYM.H3]: 6, [SYM.H4]: 7, [SYM.L1]: 9, [SYM.L2]: 9, [SYM.L3]: 9, [SYM.L4]: 9, [SYM.L5]: 9, [SYM.SCATTER]: 2 },
+  // rodillo 5 — sin wild
+  { [SYM.H1]: 4, [SYM.H2]: 5, [SYM.H3]: 6, [SYM.H4]: 7, [SYM.L1]: 10, [SYM.L2]: 10, [SYM.L3]: 10, [SYM.L4]: 10, [SYM.L5]: 10, [SYM.SCATTER]: 2 },
+];
+
+/**
+ * Tiras de la ronda de giros gratis.
+ *
+ * Más altos, más wilds y MENOS scatters. Lo último es clave: con las mismas
+ * tiras del base, los retriggers se disparan en cadena y el RTP de la feature
+ * se va al techo.
+ */
+const FREE_COUNTS: readonly SymbolCounts[] = [
+  { [SYM.H1]: 6, [SYM.H2]: 7, [SYM.H3]: 8, [SYM.H4]: 8, [SYM.L1]: 8, [SYM.L2]: 8, [SYM.L3]: 8, [SYM.L4]: 8, [SYM.L5]: 8, [SYM.SCATTER]: 2 },
+  { [SYM.WILD]: 4, [SYM.H1]: 6, [SYM.H2]: 7, [SYM.H3]: 8, [SYM.H4]: 8, [SYM.L1]: 7, [SYM.L2]: 7, [SYM.L3]: 7, [SYM.L4]: 7, [SYM.L5]: 7, [SYM.SCATTER]: 2 },
+  { [SYM.WILD]: 5, [SYM.H1]: 6, [SYM.H2]: 7, [SYM.H3]: 8, [SYM.H4]: 8, [SYM.L1]: 7, [SYM.L2]: 7, [SYM.L3]: 7, [SYM.L4]: 7, [SYM.L5]: 7, [SYM.SCATTER]: 2 },
+  { [SYM.WILD]: 4, [SYM.H1]: 6, [SYM.H2]: 7, [SYM.H3]: 8, [SYM.H4]: 8, [SYM.L1]: 7, [SYM.L2]: 7, [SYM.L3]: 7, [SYM.L4]: 7, [SYM.L5]: 7, [SYM.SCATTER]: 2 },
+  { [SYM.H1]: 6, [SYM.H2]: 7, [SYM.H3]: 8, [SYM.H4]: 8, [SYM.L1]: 8, [SYM.L2]: 8, [SYM.L3]: 8, [SYM.L4]: 8, [SYM.L5]: 8, [SYM.SCATTER]: 2 },
+];
+
+/**
+ * TIRAS DE APUESTA ANTE — pagas mas, disparas mas seguido.
+ *
+ * Identicas a las de base salvo por el conteo de SCATTER. Ese es el unico
+ * numero que hace falta mover: mas scatters en la tira, mas seguido salen
+ * los tres que disparan la feature.
+ *
+ * El valor de aca NO esta elegido a ojo. La regla que vuelve honesta a la
+ * apuesta ante es que si cobras 1,25x tenes que devolver 1,25x mas premio,
+ * o el RTP declarado deja de valer para quien la usa. Asi que este numero
+ * se ajusta MIDIENDO hasta que el RTP con ante coincide con el del base.
+ * El resultado de esa medicion esta en tuning.ts, al lado del precio.
+ */
+const ANTE_COUNTS: readonly SymbolCounts[] = BASE_COUNTS.map((r, i) => ({
+  ...r,
+  [SYM.SCATTER]: ANTE_SCATTERS[i]!,
+}));
+
+/**
+ * Semilla fija para armar las tiras.
+ *
+ * Las tiras tienen que ser SIEMPRE las mismas: son parte de la definición del
+ * juego, no algo que se re-sortea en cada arranque. Con una semilla fija el
+ * resultado es reproducible y auditable.
+ */
+const STRIP_SEED = 0x5eed_c20;
+
+export const GAME: SlotGameDef = {
+  id: 'aconcagua',
+  reels: REELS,
+  rows: ROWS,
+  paylines: PAYLINES,
+  paytable: PAYTABLE,
+  scatterPaytable: SCATTER_PAYTABLE,
+  baseStrips: buildStrips(BASE_COUNTS, new Sfc32Rng(STRIP_SEED)),
+  freeStrips: buildStrips(FREE_COUNTS, new Sfc32Rng(STRIP_SEED ^ 0xf1ee)),
+  // Semilla propia: si compartiera la del base, las dos tiras quedarian
+  // correlacionadas y el ante seria "la misma tira con un scatter mas",
+  // no una tira distinta.
+  anteStrips: buildStrips(ANTE_COUNTS, new Sfc32Rng(STRIP_SEED ^ 0xa17e)),
+  anteCostX: ANTE_COST_X,
+  bonusVariants: BONUS_VARIANTS,
+  scattersToTrigger: 3,
+  // Fallback si no hubiera escalinata; con `climb` presente no se usan.
+  freeSpinsAwarded: 12,
+  freeSpinsRetrigger: 5,
+  freeSpinMultiplier: 5,
+  maxFreeSpins: 500,
+  /**
+   * El Ascenso: al disparar se sube de campamento en campamento, sorteo a
+   * sorteo, y el campamento alcanzado define el paquete de giros gratis.
+   *
+   * Es la Escalinata de Maverick con volatilidad BAJA: multiplicadores de
+   * ×2 a ×4 en vez de ×4 a ×10, y se sube más fácil (65 % → 50 % → 35 % →
+   * 20 %). La cumbre sale más seguido y paga menos: el valor se reparte en
+   * más funciones chicas.
+   */
+  climb: {
+    tiers: [
+      { spins: 8, multiplier: 2 },
+      { spins: 10, multiplier: 2 },
+      { spins: 12, multiplier: 3 },
+      { spins: 15, multiplier: 3 },
+      { spins: 20, multiplier: 4 },
+    ],
+    ascendPerMil: [650, 500, 350, 200],
+  },
+};
+
+export { PAYLINES, BASE_COUNTS, FREE_COUNTS, PAYTABLE, SCATTER_PAYTABLE };

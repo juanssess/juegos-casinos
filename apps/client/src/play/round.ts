@@ -85,7 +85,7 @@ export async function playRound(
         const atTop = climb.tier === cfg.climbTiers.length;
         fx.announce(
           `${climb.spins} GIROS ×${climb.multiplier}`,
-          atTop ? 'la Cámara del Sol' : `nivel ${climb.tier} de la Escalinata`,
+          atTop ? (profile.climbTop ?? 'la Cámara del Sol') : `nivel ${climb.tier} de ${profile.climbName ?? 'la Escalinata'}`,
           1100,
         );
         fx.burst(25 + climb.tier * 18);

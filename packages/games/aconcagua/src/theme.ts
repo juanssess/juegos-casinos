@@ -1,0 +1,160 @@
+/**
+ * El Aconcagua — skin de la montaña más alta de América sobre el modelo
+ * `aconcagua` (20 líneas y El Ascenso: la Escalinata de Maverick con
+ * volatilidad baja).
+ *
+ * Amanecer en la alta montaña: nieve rosada, roca violeta y el sol que
+ * asoma detrás de la cumbre. Los altos son la fauna andina y el
+ * campamento; los bajos, el equipo de expedición, cada uno de un color.
+ * La bandera de la cumbre es el scatter y la que sube los campamentos.
+ */
+
+import { SYM, type SymbolId } from '@casino/math';
+
+/** Nombre comercial del juego. La math es `aconcagua`. */
+export const TITLE = 'El Aconcagua';
+
+export type SymbolShape =
+  | 'serpent'
+  | 'jaguar'
+  | 'mask'
+  | 'skull'
+  | 'glyph'
+  | 'sun'
+  | 'temple';
+
+export interface SymbolSkin {
+  id: SymbolId;
+  /** Nombre visible en la tabla de pagos. */
+  label: string;
+  /** Forma que dibuja el renderer. */
+  shape: SymbolShape;
+  /** Color principal de la figura. */
+  color: number;
+  /** Color secundario, para el detalle interno. */
+  accent: number;
+  /** Fondo de la ficha. */
+  plate: number;
+  /** Texto del glifo, solo para los bajos. */
+  glyph?: string;
+}
+
+export const SKIN: Record<SymbolId, SymbolSkin> = {
+  [SYM.WILD]: {
+    id: SYM.WILD,
+    label: 'Piolet Dorado',
+    shape: 'sun',
+    color: 0xffc93c,
+    accent: 0xff7a1a,
+    plate: 0x3a2410,
+  },
+  [SYM.SCATTER]: {
+    id: SYM.SCATTER,
+    label: 'Bandera de la Cumbre',
+    shape: 'temple',
+    color: 0x3fe0d0,
+    accent: 0x0e7f78,
+    plate: 0x08302f,
+  },
+  [SYM.H1]: {
+    id: SYM.H1,
+    label: 'Puma',
+    shape: 'serpent',
+    color: 0xf2b134,
+    accent: 0xc4442a,
+    plate: 0x2a1a0e,
+  },
+  [SYM.H2]: {
+    id: SYM.H2,
+    label: 'Guanaco',
+    shape: 'jaguar',
+    color: 0xe08a3c,
+    accent: 0x2b1508,
+    plate: 0x2a1a0e,
+  },
+  [SYM.H3]: {
+    id: SYM.H3,
+    label: 'Carpa',
+    shape: 'mask',
+    color: 0x4fbf8b,
+    accent: 0x1d5c46,
+    plate: 0x14261f,
+  },
+  [SYM.H4]: {
+    id: SYM.H4,
+    label: 'Mochila',
+    shape: 'skull',
+    color: 0xb9a7d4,
+    accent: 0x3b2d55,
+    plate: 0x1d1729,
+  },
+  /* LOS NAIPES TIENEN MATERIAL.
+     Antes eran todos el mismo crema, apenas mas apagado a medida que bajaba
+     el valor. Se leia como cinco letras iguales en gris, y son casi dos
+     tercios de lo que aparece en pantalla: si esos se ven baratos, el juego
+     entero se ve barato por bien que esten los altos.
+
+     Ahora cada uno es un material distinto —oro, plata, cobre, jade, acero—
+     que ademas ordena el valor sin que haya que leer la tabla de pagos. La
+     jerarquia se mantiene: el oro del As esta un escalon por debajo del oro
+     del wild, no compitiendo con el. */
+  [SYM.L1]: { id: SYM.L1, label: 'Mate', shape: 'glyph', glyph: 'A', color: 0xf2c766, accent: 0x8a6a24, plate: 0x241d14 },
+  [SYM.L2]: { id: SYM.L2, label: 'Bota', shape: 'glyph', glyph: 'K', color: 0xd8dfe8, accent: 0x6d7683, plate: 0x241d14 },
+  [SYM.L3]: { id: SYM.L3, label: 'Casco', shape: 'glyph', glyph: 'Q', color: 0xe09a64, accent: 0x8a5228, plate: 0x241d14 },
+  [SYM.L4]: { id: SYM.L4, label: 'Mosquetón', shape: 'glyph', glyph: 'J', color: 0x7fd8b0, accent: 0x2f7a5c, plate: 0x241d14 },
+  [SYM.L5]: { id: SYM.L5, label: 'Termo', shape: 'glyph', glyph: '10', color: 0x8fb4d9, accent: 0x3d5f80, plate: 0x241d14 },
+};
+
+/**
+ * Paleta general. Base oscura y cálida (piedra volcánica) para que el oro y
+ * el turquesa del scatter tengan contra qué brillar.
+ */
+export const PALETTE = {
+  bgTop: 0x2a2a52,
+  bgBottom: 0x0c0c1e,
+  frame: 0x4a4a7a,
+  frameLight: 0xf4d6b0,
+  reelBg: 0x12122a,
+  reelBgAlt: 0x161632,
+  text: 0xf6f2ff,
+  textDim: 0xa8a6c8,
+  win: 0xffd35c,
+  bigWin: 0xff8a4c,
+  /* El naranja del sol en la cumbre: la bandera y el marco en la función. */
+  scatter: 0xff9a4a,
+  mult: 0xffc87a,
+} as const;
+
+/**
+ * Tiempos de animación, en milisegundos.
+ *
+ * Esto es lo que de verdad diferencia un slot bueno de uno malo, y no tiene
+ * nada que ver con el arte. La probabilidad ya está resuelta antes de que el
+ * primer rodillo se mueva: todo lo que pasa acá es teatro sobre un resultado
+ * que ya existe.
+ *
+ * `anticipation` es el truco central: cuando ya cayeron los scatters
+ * suficientes para que el siguiente rodillo pueda disparar la feature, ese
+ * rodillo gira mucho más lento y más tiempo. El jugador siente que el juego
+ * "duda". No cambia ni una probabilidad — cambia toda la experiencia.
+ */
+export const TIMING = {
+  /** Cuánto tarda en frenar el primer rodillo. */
+  firstReelStop: 450,
+  /** Diferencia entre la parada de un rodillo y el siguiente. */
+  reelStagger: 110,
+  /** Duración extra del rodillo en modo expectativa. */
+  anticipationExtra: 1400,
+  /** Velocidad de giro en píxeles por segundo. */
+  spinSpeed: 4200,
+  /** Velocidad durante la expectativa (bien más lenta). */
+  anticipationSpeed: 900,
+  /** Rebote al frenar. */
+  bounce: 130,
+  /** Cuánto queda encendida cada línea ganadora en el ciclo. */
+  winCycle: 800,
+  /** Duración del conteo del premio total. */
+  countUp: 900,
+  /** Pausa entre giros gratis. */
+  freeSpinGap: 350,
+} as const;

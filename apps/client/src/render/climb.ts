@@ -10,7 +10,7 @@
  * al final el paquete ganado en grande.
  */
 
-import { Container, Graphics, Text } from 'pixi.js';
+import { Container, Graphics, Sprite, Text, type Texture } from 'pixi.js';
 import { PALETTE } from './theme.ts';
 import type { ClimbDto } from '@casino/protocol';
 
@@ -43,18 +43,21 @@ export class ClimbScene {
   #h: number;
   #steps: Graphics[] = [];
   #stepLabels: Text[] = [];
-  #sun = new Graphics();
+  /** Lo que sube los escalones: el sol de Maverick, o la pieza que traiga el juego. */
+  #sun = new Container();
+  #marker: Texture | null;
   #title: Text;
   #shakeT = 0;
   #sunY = 0;
   #sunTargetY = 0;
   #pulseT = 0;
 
-  constructor(w: number, h: number) {
+  constructor(w: number, h: number, opts: { title?: string; marker?: Texture } = {}) {
     this.#w = w;
     this.#h = h;
     this.view.visible = false;
-    this.#title = label('LA ESCALINATA', 30, PALETTE.win);
+    this.#marker = opts.marker ?? null;
+    this.#title = label((opts.title ?? 'La Escalinata').toUpperCase(), 30, PALETTE.win);
   }
 
   /** Construye la pirámide para estos paquetes (se rehace por si cambian). */
@@ -103,8 +106,16 @@ export class ClimbScene {
   }
 
   #drawSun(): void {
-    const g = this.#sun;
-    g.clear();
+    this.#sun.removeChildren();
+    if (this.#marker) {
+      const s = new Sprite(this.#marker);
+      s.anchor.set(0.5);
+      s.width = s.height = 46;
+      this.#sun.addChild(s);
+      return;
+    }
+    const g = new Graphics();
+    this.#sun.addChild(g);
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2;
       g.poly([

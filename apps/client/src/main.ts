@@ -156,7 +156,11 @@ async function main(): Promise<void> {
   const boardW = cfg.reels * (CELL + GAP) - GAP;
   const boardH = cfg.rows * CELL;
 
-  const climbScene = new ClimbScene(boardW, boardH);
+  const climbScene = new ClimbScene(boardW, boardH, {
+    ...(profile.climbName ? { title: profile.climbName } : {}),
+    // Con nombre propio, la escalada la sube el scatter del juego en vez del sol de Maverick.
+    ...(profile.climbName && textures.get(SYM.SCATTER) ? { marker: textures.get(SYM.SCATTER)! } : {}),
+  });
   board.addChild(climbScene.view);
 
   // Capa de multiplicadores pegajosos. Solo la usan los juegos que los
@@ -559,6 +563,9 @@ async function main(): Promise<void> {
     cluster: profile.cluster === true,
     hasClimb: ctx.hasClimb,
     hold: profile.hold,
+    climbName: profile.climbName,
+    // "Bandera de la Cumbre" → "banderas": se pluraliza la primera palabra.
+    scatterPlural: profile.climbName ? `${(profile.labels[SYM.SCATTER] ?? 'scatter').split(' ')[0]!.toLowerCase()}s` : undefined,
   });
   board.addChild(infoModal);
 
